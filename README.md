@@ -93,12 +93,10 @@ Together, they form a complete solution: Cassandra keeps your operations running
 - **Ports**: 22 (SSH), 9443 (watsonx.data)
 
 ### Software Required
-| On EC2 | On Your Laptop |
-|--------|----------------|
-| Docker/Podman | SSH client |
-| Kubernetes (kind) | Web browser |
-| Java 11 or 17 | |
-| Maven | |
+- Docker/Podman - Container runtime
+- Kubernetes - Container orchestration
+- Java 11 or 17 - For DataStax HCD
+- Maven - For building Java applications
 
 ---
 
