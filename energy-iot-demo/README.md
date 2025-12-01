@@ -30,14 +30,21 @@ The main README contains:
 
 ## Configuration
 
-Before building, update Cassandra connection in:
-`src/main/java/com/ibm/wxd/datalabs/demo/cass_spark_iceberg/utils/CassUtil.java`
+**IMPORTANT**: Before building, you MUST configure Cassandra connection settings.
+
+See the main README's **Step 3: Build the Demo Application** for detailed instructions on:
+1. Verifying your Cassandra datacenter name
+2. Updating connection settings (host and datacenter)
+
+Quick reference - update these in `src/main/java/com/ibm/wxd/datalabs/demo/cass_spark_iceberg/utils/CassUtil.java`:
 
 ```java
-// Lines 16-21
-private static final String CASSANDRA_HOST = "127.0.0.1";  // Change this
-private static final int CASSANDRA_PORT = 9042;
+// Lines 21 and 23
+private static final String CASSANDRA_HOST = "your-ec2-private-ip";  // NOT 127.0.0.1
+private static final String CASSANDRA_DATACENTER = "datacenter1";  // Verify with nodetool status
 ```
+
+⚠️ **These settings are compiled into the JAR**. If you need to change them, you must rebuild.
 
 ## Project Structure
 

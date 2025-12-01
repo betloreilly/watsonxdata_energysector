@@ -4,6 +4,8 @@
 
 This demo shows how to handle IoT sensor data from energy infrastructure (wind turbines, solar panels, etc.) using Cassandra for operational data and Iceberg for analytics.
 
+**Based on**: This version builds upon [wxd-spark-hcd](https://github.com/michelderu/wxd-spark-hcd) and [cass_spark_iceberg](https://github.ibm.com/pravin-bhat/cass_spark_iceberg/tree/main), updated for EC2 deployment and customized with Energy-sector examples.
+
 ---
 
 ## Business Scenario
@@ -104,36 +106,106 @@ Together, they form a complete solution: Cassandra keeps your operations running
 
 ### Step 1: Set Up EC2 and watsonx.data
 
+#### 📥 Download & Install
+
 1. **Launch EC2 instance** with specs above
 
-2. **Install watsonx.data** (using kind):
-   ```bash
-   # Follow IBM watsonx.data installation guide
-   # Usually involves downloading installer and running setup script
-   ```
+2. **Install watsonx.data Developer Edition**:
+   
+   Follow the [IBM watsonx.data Developer Edition installation guide](https://www.ibm.com/docs/en/watsonxdata).
+   
+   This usually involves:
+   - Downloading the Developer Edition installer
+   - Running the setup script
+   - Installing on Kubernetes (kind)
 
-3. **Set up port forwarding** to access watsonx.data UI:
+#### 🔍 Verify Installation
 
-   **Option A: Using SSH tunnel (from laptop)**
-   ```bash
-   ssh -i your-key.pem -L 9443:localhost:9443 ec2-user@your-ec2-ip
-   ```
+Check that all pods are running correctly:
 
-   **Option B: Using kubectl (on EC2, then access from laptop)**
-   ```bash
-   # On EC2 - Forward watsonx.data UI
-   kubectl -n wxd port-forward svc/lhconsole-ui-svc 9443:443
+```bash
+# View all pods
+kubectl get pods -n wxd
 
-   # On EC2 - Forward MinIO (for file uploads)
-   kubectl -n wxd port-forward svc/ibm-lh-minio-svc 9000:9000 9001:9001
-   ```
+# Count pods (should return 22 for Developer Edition)
+kubectl get pods -n wxd | wc -l
+```
 
-   Then use SSH tunnel from laptop:
-   ```bash
-   ssh -i your-key.pem -L 9443:localhost:9443 -L 9000:localhost:9000 -L 9001:localhost:9001 ec2-user@your-ec2-ip
-   ```
+Ensure all pods show `Running` status before proceeding.
 
-4. **Open browser** → `https://localhost:9443` (watsonx.data UI)
+#### 🌐 Expose Services
+
+**On EC2**, run these commands to expose watsonx.data services:
+
+```bash
+# Expose watsonx.data UI (port 9443)
+export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/lhconsole-ui-svc 9443:443 --address 0.0.0.0 > /dev/null 2>&1 &
+
+# Expose MinIO Console (port 9001)
+export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/ibm-lh-minio-svc 9001:9001 --address 0.0.0.0 > /dev/null 2>&1 &
+
+# Expose MinIO API (port 9000)
+export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/ibm-lh-minio-svc 9000:9000 --address 0.0.0.0 > /dev/null 2>&1 &
+
+# Expose MDS (Metadata Service - port 8381)
+export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/ibm-lh-mds-thrift-svc 8381:8381 --address 0.0.0.0 > /dev/null 2>&1 &
+```
+
+**From your laptop**, create SSH tunnel to access these services:
+
+```bash
+ssh -i your-key.pem -L 9443:localhost:9443 -L 9000:localhost:9000 -L 9001:localhost:9001 -L 8381:localhost:8381 ec2-user@your-ec2-ip
+```
+
+#### 🖥️ Access watsonx.data UI
+
+**Open browser** → `https://localhost:9443` (watsonx.data UI)
+
+![watsonx.data Infrastructure Manager](watsonxdata.png)
+
+*watsonx.data Infrastructure Manager showing engines, catalogs, storage, and data sources*
+
+#### 📦 Access MinIO (Object Storage)
+
+Access MinIO Console at `http://localhost:9001`
+
+![Minio UI](minio.png)
+
+
+**Developer Edition Default Credentials:**
+- Username: `dummyvalue`
+- Password: `dummyvalue`
+
+**For other installations**, retrieve credentials from secrets:
+```bash
+kubectl get secret ibm-lh-minio-secret -n wxd -o jsonpath='{.data.accesskey}' | base64 -d && echo
+kubectl get secret ibm-lh-minio-secret -n wxd -o jsonpath='{.data.secretkey}' | base64 -d && echo
+```
+
+Save these credentials - you'll need them for the MinIO client (mc).
+   
+#### 🛠️ Install MinIO Client (mc)
+
+**On EC2**, install the MinIO client:
+
+```bash
+# Download and install MinIO client
+curl -O https://dl.min.io/client/mc/release/linux-amd64/mc
+chmod +x mc
+sudo mv mc /usr/local/bin/
+
+# Verify installation
+mc --version
+```
+
+**📖 Reference**: See the [IBM watsonx.data documentation](https://www.ibm.com/docs/en/watsonxdata) for more information.
+
+---
+
+**Note on MinIO Endpoints**: 
+- **From laptop** (via SSH tunnel): `http://localhost:9000` and `http://localhost:9001`
+- **From EC2**: `http://localhost:9000` (kubectl port-forward makes it available)
+- **From Spark jobs** (inside Kubernetes): `http://ibm-lh-minio-svc:9000` (internal service name)
 
 ### Step 2: Install Cassandra (DataStax HCD)
 
@@ -200,8 +272,40 @@ You should see "UN" status (Up/Normal).
 
 ### Step 3: Build the Demo Application
 
+**IMPORTANT: Configure Cassandra Connection Before Building**
+
+Before building, update the Cassandra connection settings:
+
+**Step 3.1: Verify Cassandra datacenter name**
+
 ```bash
-# Clone this repo
+# Check what datacenter Cassandra is using
+~/hcd-1.2.3/bin/nodetool status
+```
+
+Look for the "Datacenter" column in the output. It's usually `datacenter1` for HCD, but verify this.
+
+**Step 3.2: Update connection settings**
+
+```bash
+# Get your EC2 private IP (save this value)
+EC2_PRIVATE_IP=$(hostname -I | awk '{print $1}')
+echo "EC2 Private IP: $EC2_PRIVATE_IP"
+
+# Edit the Cassandra utility class
+nano energy-iot-demo/src/main/java/com/ibm/wxd/datalabs/demo/cass_spark_iceberg/utils/CassUtil.java
+```
+
+Update these lines (21 and 23):
+```java
+private static final String CASSANDRA_HOST = "your-ec2-private-ip";  // Change from 127.0.0.1
+private static final String CASSANDRA_DATACENTER = "datacenter1";  // Verify this matches your Cassandra
+```
+
+**Now build the JAR:**
+
+```bash
+# Clone this repo (if not already cloned)
 git clone <your-repo-url>
 cd energy_demo/energy-iot-demo
 
@@ -326,17 +430,25 @@ This moves data from Cassandra to Iceberg.
 
 ```bash
 # Configure MinIO client (mc) with watsonx.data credentials
-mc alias set wxd http://localhost:9000 <access-key> <secret-key>
+# For Developer Edition, use default credentials:
+mc alias set wxd http://localhost:9000 dummyvalue dummyvalue
 
-# Create spark-artifacts bucket if it doesn't exist
+# Create required buckets if they don't exist
 mc mb wxd/spark-artifacts
+mc mb wxd/iceberg-bucket
 
 # Upload the JAR file
 mc cp target/energy-iot-demo-1.0.0.jar wxd/spark-artifacts/
 
-# Verify upload
+# Verify upload and buckets
 mc ls wxd/spark-artifacts/
+mc ls wxd/
 ```
+
+**Note**: 
+- For **Developer Edition**: Use `dummyvalue/dummyvalue` as shown above
+- For **other installations**: Replace with credentials from Step 1 (MinIO Access section)
+- Run these commands **on EC2** where the JAR file is located
 
 #### Submit Spark Application
 
@@ -353,6 +465,7 @@ In watsonx.data UI:
     "conf": {
       "spark.cassandra.connection.host": "<your-ec2-private-ip>",
       "spark.cassandra.connection.port": "9042",
+      "spark.cassandra.connection.local_dc": "datacenter1",
       "spark.cassandra.auth.username": "cassandra",
       "spark.cassandra.auth.password": "cassandra",
       "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
@@ -366,6 +479,8 @@ In watsonx.data UI:
 }
 ```
 
+**Important**: Update `<your-ec2-private-ip>` with your actual EC2 private IP. If you changed the datacenter name in Step 3.1, update `spark.cassandra.connection.local_dc` accordingly.
+
 4. Click **Submit**
 5. Watch the logs → should complete in 2-3 minutes
 
@@ -377,6 +492,8 @@ In watsonx.data UI:
 **Performance**: Optimized version (10-20x faster) with parallel reads. See `SparkUtil.java` for settings.
 
 ### Part 5: Query the Data
+
+![watsonx.data Query Workspace](query.png)
 
 Now you can query both Cassandra and Iceberg from watsonx.data!
 
