@@ -434,17 +434,44 @@ SELECT COUNT(*) FROM energy_ks.sensor_readings_by_asset;
 
 ### Part 3: Connect Cassandra to watsonx.data
 
-1. In watsonx.data UI → **Infrastructure manager**
-2. Add **Cassandra catalog**:
-   - Name: `energy`
-   - Host: `<your-ec2-private-ip>` (get it with `hostname -I | awk '{print $1}'`)
-   - Port: `9042`
-   - Username: `cassandra`
-   - Password: `cassandra`
+Add Cassandra as a data source in watsonx.data so you can query it:
 
-3. Test connection → You should see `energy_ks` keyspace
+**Step 1:** Open watsonx.data UI at `https://localhost:9444`
 
-**Note:** Use EC2 private IP, not localhost. watsonx.data runs in Kubernetes pods and needs the network-accessible IP.
+**Step 2:** Go to **Infrastructure manager** (left sidebar)
+
+**Step 3:** Click **Add component** → **Add database**
+
+**Step 4:** Configure the Cassandra connection:
+   - **Database type**: Select `Cassandra`
+   - **Catalog name**: `hcd` (this is how you'll reference it in queries)
+   - **Hostname**: `<your-ec2-private-ip>` 
+     - Get it on EC2: `hostname -I | awk '{print $1}'`
+     - Example: `172.31.26.107`
+   - **Port**: `9042`
+   - **Username**: `cassandra`
+   - **Password**: `cassandra`
+
+**Step 5:** Click **Test connection** 
+
+You should see: ✅ Connection successful
+
+**Step 6:** Click **Create** to save the catalog
+
+**Step 7:** Associate the catalog with Presto engine:
+   - In Infrastructure manager, find your Presto engine
+   - Click the engine → **Associate catalogs**
+   - Select `hcd` catalog
+   - Click **Save**
+
+**Verify:** In the left sidebar, you should now see:
+```
+📁 hcd
+  └── 📁 energy_ks
+       └── 📊 sensor_readings_by_asset
+```
+
+**Note:** Use EC2 **private IP** (172.31.x.x), not localhost. watsonx.data runs in Kubernetes pods and needs the network-accessible IP address.
 
 ### Part 4: Run Spark ETL Job
 
@@ -521,19 +548,25 @@ In watsonx.data UI:
 
 Now you can query both Cassandra and Iceberg from watsonx.data!
 
+**Understanding Catalog Names:**
+- `hcd` = Cassandra catalog (HyperConverged Database)
+- `iceberg_data` = Iceberg catalog (analytical storage)
+
+Use these catalog names in your queries: `catalog.schema.table`
+
 #### Query Cassandra (Real-time Data)
 
 ```sql
 -- List catalogs
 SHOW CATALOGS;
 
--- Browse tables
-SHOW SCHEMAS FROM energy;
-SHOW TABLES FROM energy.energy_ks;
+-- Browse tables in Cassandra
+SHOW SCHEMAS FROM hcd;
+SHOW TABLES FROM hcd.energy_ks;
 
--- Query recent readings
+-- Query recent critical alerts
 SELECT asset_name, asset_type, power_output, alert_level
-FROM energy.energy_ks.sensor_readings_by_asset
+FROM hcd.energy_ks.sensor_readings_by_asset
 WHERE alert_level = 'critical'
 ALLOW FILTERING
 LIMIT 20;
@@ -589,10 +622,46 @@ ORDER BY hour;
 
 #### Federated Query (Both Systems!)
 
-```sql
--- Compare real-time vs historical
+Query across both Cassandra (real-time) and Iceberg (historical) in a single SQL statement:
 
+```sql
+-- Find underperforming assets: Compare current performance vs historical baseline
+WITH historical_baseline AS (
+  SELECT 
+    asset_name,
+    asset_type,
+    region,
+    AVG(power_output) as avg_power,
+    AVG(efficiency) as avg_efficiency
+  FROM iceberg_data.energy_data.sensor_readings
+  WHERE operational_status = 'online'
+  GROUP BY asset_name, asset_type, region
+),
+current_performance AS (
+  SELECT 
+    asset_name,
+    AVG(power_output) as current_power,
+    AVG(efficiency) as current_efficiency
+  FROM hcd.energy_ks.sensor_readings_by_asset
+  GROUP BY asset_name
+)
+SELECT 
+  h.asset_name,
+  h.asset_type,
+  h.region,
+  ROUND(h.avg_power, 2) as baseline_power_kw,
+  ROUND(c.current_power, 2) as current_power_kw,
+  ROUND(((c.current_power - h.avg_power) / h.avg_power * 100), 1) as power_change_percent,
+  ROUND(h.avg_efficiency, 2) as baseline_efficiency,
+  ROUND(c.current_efficiency, 2) as current_efficiency
+FROM historical_baseline h
+JOIN current_performance c ON h.asset_name = c.asset_name
+WHERE c.current_power < (h.avg_power * 0.8)  -- Assets performing 20% below baseline
+ORDER BY power_change_percent
+LIMIT 20;
 ```
+
+This identifies assets that need maintenance - comparing **live Cassandra data** against **historical Iceberg baselines** to find underperforming equipment!
 
 ---
 
