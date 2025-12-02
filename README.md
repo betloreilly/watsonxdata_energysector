@@ -11,10 +11,10 @@ This demo shows how to handle IoT sensor data from energy infrastructure (wind t
 ## Business Scenario
 
 **PowerGrid Energy** company operates distributed energy infrastructure:
-- 500 wind turbines (10 wind farms across 5 regions)
-- 200 solar panel arrays (5 solar facilities)  
-- 50 substations (grid distribution)
-- 100 transmission line monitors
+- 5,000 wind turbines (100 wind farms across 10 regions)
+- 2,000 solar panel arrays (50 solar facilities)  
+- 500 substations (grid distribution)
+- 1,000 transmission line monitors
 
 Each asset sends sensor data every 10 seconds:
 - Power generation/consumption
@@ -24,12 +24,11 @@ Each asset sends sensor data every 10 seconds:
 
 ### Data Volume
 
-- **850 sensors** × 6 readings/minute = **4,500 readings/minute**
-- **270,000 readings/hour**
-- **6.5 million readings/day**  
-- **195 million readings/month**
+- **8,500 sensors** × 6 readings/minute = **51,000 readings/minute**
+- **3.06 million readings/hour**
+- **73.4 million readings/day**  
+- **2.2 billion readings/month**
 
-This is real IoT scale!
 
 ---
 
@@ -37,7 +36,7 @@ This is real IoT scale!
 
 This demo uses two complementary data stores to handle different aspects of IoT data management. Each system is optimized for its specific role in the data pipeline.
 
-**Cassandra handles operational data** - the recent sensor readings that need to be written and queried quickly. When you have 850 sensors sending data every 10 seconds (4,500 inserts per minute), you need a database that can handle high-velocity writes without breaking a sweat. Cassandra excels at this. It's designed for questions like "What's the current status of Turbine-North-001?" or "Show me all critical alerts from the last hour." This is the operational layer where monitoring dashboards and real-time alerting systems get their data.
+**Cassandra handles operational data** - the recent sensor readings that need to be written and queried quickly. When you have 8,500 sensors sending data every 10 seconds (51,000 inserts per minute), you need a database that can handle high-velocity writes without breaking a sweat. Cassandra excels at this. It's designed for questions like "What's the current status of Turbine-North-001?" or "Show me all critical alerts from the last hour." This is the operational layer where monitoring dashboards and real-time alerting systems get their data.
 
 **Iceberg handles historical analytics** - the long-term storage where months or years of data lives. Once operational data ages beyond a few days, it's moved to Iceberg for cost-effective storage and complex analysis. This is where you run queries like "What was average power output last month?" or "Which turbines need maintenance based on vibration trends over the past year?" Iceberg is also ideal for training machine learning models since you can access years of historical patterns without overwhelming your operational database.
 
@@ -49,8 +48,8 @@ Together, they form a complete solution: Cassandra keeps your operations running
 
 ```
 ┌─────────────────────┐
-│   Sensor Devices    │  850 assets × 6 readings/minute
-│ (Wind, Solar, etc)  │  = 4,500 readings/minute
+│   Sensor Devices    │  8,500 assets × 6 readings/minute
+│ (Wind, Solar, etc)  │  = 51,000 readings/minute
 └──────────┬──────────┘
            │
            ▼
@@ -106,7 +105,7 @@ Together, they form a complete solution: Cassandra keeps your operations running
 
 ### Step 1: Set Up EC2 and watsonx.data
 
-#### 📥 Download & Install
+#### Download & Install
 
 1. **Launch EC2 instance** with specs above
 
@@ -119,7 +118,7 @@ Together, they form a complete solution: Cassandra keeps your operations running
    - Running the setup script
    - Installing on Kubernetes (kind)
 
-#### 🔍 Verify Installation
+#### Verify Installation
 
 Check that all pods are running correctly:
 
@@ -133,58 +132,40 @@ kubectl get pods -n wxd | wc -l
 
 Ensure all pods show `Running` status before proceeding.
 
-#### 🌐 Expose Services
+#### Set Up Port Forwarding for watsonx.data UI
 
-**On EC2**, run these commands to expose watsonx.data services:
+**On EC2**, run these commands to expose watsonx.data UI and MDS:
 
 ```bash
 # Expose watsonx.data UI (port 9443)
 export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/lhconsole-ui-svc 9443:443 --address 0.0.0.0 > /dev/null 2>&1 &
 
-# Expose MinIO Console (port 9001)
-export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/ibm-lh-minio-svc 9001:9001 --address 0.0.0.0 > /dev/null 2>&1 &
-
-# Expose MinIO API (port 9000)
-export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/ibm-lh-minio-svc 9000:9000 --address 0.0.0.0 > /dev/null 2>&1 &
-
 # Expose MDS (Metadata Service - port 8381)
 export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/ibm-lh-mds-thrift-svc 8381:8381 --address 0.0.0.0 > /dev/null 2>&1 &
 ```
 
-**From your laptop**, create SSH tunnel to access these services:
+**From your laptop**, create SSH tunnel to access watsonx.data UI:
 
 ```bash
-ssh -i your-key.pem -L 9443:localhost:9443 -L 9000:localhost:9000 -L 9001:localhost:9001 -L 8381:localhost:8381 ec2-user@your-ec2-ip
+# Use EC2 PUBLIC IP or PUBLIC DNS (not private IP!)
+# Using port 9444 locally to avoid conflicts with other services
+ssh -i your-key.pem -L 9444:localhost:9443 -L 8381:localhost:8381 ec2-user@your-ec2-public-ip
+
+# Example:
+# ssh -i enel.pem -L 9444:localhost:9443 -L 8381:localhost:8381 ec2-user@ec2-51-20-76-129.eu-north-1.compute.amazonaws.com
 ```
 
-#### 🖥️ Access watsonx.data UI
+**Note:** Use your EC2's **public IP** or **public DNS name** (found in AWS Console), not the private IP (172.31.x.x).
 
-**Open browser** → `https://localhost:9443` (watsonx.data UI)
+#### Access watsonx.data UI
+
+**Open browser** → `https://localhost:9444` (watsonx.data UI)
 
 ![watsonx.data Infrastructure Manager](watsonxdata.png)
 
 *watsonx.data Infrastructure Manager showing engines, catalogs, storage, and data sources*
 
-#### 📦 Access MinIO (Object Storage)
-
-Access MinIO Console at `http://localhost:9001`
-
-![Minio UI](minio.png)
-
-
-**Developer Edition Default Credentials:**
-- Username: `dummyvalue`
-- Password: `dummyvalue`
-
-**For other installations**, retrieve credentials from secrets:
-```bash
-kubectl get secret ibm-lh-minio-secret -n wxd -o jsonpath='{.data.accesskey}' | base64 -d && echo
-kubectl get secret ibm-lh-minio-secret -n wxd -o jsonpath='{.data.secretkey}' | base64 -d && echo
-```
-
-Save these credentials - you'll need them for the MinIO client (mc).
-   
-#### 🛠️ Install MinIO Client (mc)
+#### Install MinIO Client (mc)
 
 **On EC2**, install the MinIO client:
 
@@ -198,13 +179,56 @@ sudo mv mc /usr/local/bin/
 mc --version
 ```
 
-**📖 Reference**: See the [IBM watsonx.data documentation](https://www.ibm.com/docs/en/watsonxdata) for more information.
+#### Set Up Port Forwarding for MinIO
+
+**On EC2**, run these commands to expose MinIO services:
+
+```bash
+# Expose MinIO Console (port 9001)
+export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/ibm-lh-minio-svc 9001:9001 --address 0.0.0.0 > /dev/null 2>&1 &
+
+# Expose MinIO API (port 9000)
+export KUBECONFIG=~/.kube/config && nohup kubectl port-forward -n wxd service/ibm-lh-minio-svc 9000:9000 --address 0.0.0.0 > /dev/null 2>&1 &
+```
+
+**From your laptop**, update your SSH tunnel to include MinIO ports:
+
+```bash
+# Exit existing SSH session (Ctrl+C or exit)
+# Then reconnect with all ports (using EC2 PUBLIC IP):
+ssh -i your-key.pem -L 9444:localhost:9443 -L 8381:localhost:8381 -L 9000:localhost:9000 -L 9001:localhost:9001 ec2-user@your-ec2-public-ip
+
+# Example:
+# ssh -i enel.pem -L 9444:localhost:9443 -L 8381:localhost:8381 -L 9000:localhost:9000 -L 9001:localhost:9001 ec2-user@ec2-51-20-76-129.eu-north-1.compute.amazonaws.com
+```
+
+#### Access MinIO (Object Storage)
+
+Access MinIO Console at `http://localhost:9001`
+
+![Minio UI](minio.png)
+
+**Developer Edition Default Credentials:**
+- Username: `dummyvalue`
+- Password: `dummyvalue`
+
+**For other installations**, retrieve credentials from secrets:
+```bash
+kubectl get secret ibm-lh-minio-secret -n wxd -o jsonpath='{.data.accesskey}' | base64 -d && echo
+kubectl get secret ibm-lh-minio-secret -n wxd -o jsonpath='{.data.secretkey}' | base64 -d && echo
+```
+
+Save these credentials - you'll need them to configure the MinIO client.
 
 ---
 
-**Note on MinIO Endpoints**: 
-- **From laptop** (via SSH tunnel): `http://localhost:9000` and `http://localhost:9001`
-- **From EC2**: `http://localhost:9000` (kubectl port-forward makes it available)
+**Reference**: See the [IBM watsonx.data documentation](https://www.ibm.com/docs/en/watsonxdata) for more information.
+
+**Note on Access Points**: 
+- **watsonx.data UI from laptop**: `https://localhost:9444` (via SSH tunnel)
+- **MinIO Console from laptop**: `http://localhost:9001` (via SSH tunnel)
+- **MinIO API from laptop**: `http://localhost:9000` (via SSH tunnel)
+- **From EC2**: Use `http://localhost:9000` and `http://localhost:9001` (kubectl port-forward)
 - **From Spark jobs** (inside Kubernetes): `http://ibm-lh-minio-svc:9000` (internal service name)
 
 ### Step 2: Install Cassandra (DataStax HCD)
@@ -379,17 +403,17 @@ exit;
 
 ### Part 2: Load Data into Cassandra
 
-Generate 850 assets with 360 readings each (1 hour of data):
+Generate 8,500 assets with 360 readings each (1 hour of data):
 
 ```bash
 cd ~/energy_demo/energy-iot-demo
 
 java -cp target/energy-iot-demo-1.0.0.jar \
   com.ibm.wxd.datalabs.demo.cass_spark_iceberg.LoadEnergyReadings \
-  850 360
+  8500 360
 ```
 
-This takes about 5-10 minutes and creates **306,000 readings**.
+This takes about 10-15 minutes and creates **3,060,000 readings** (3+ million records).
 
 **What's happening**: The `LoadEnergyReadings.java` class generates realistic sensor data with physics simulation:
 - Wind turbines: Power depends on wind speed (3-25 m/s)
@@ -405,7 +429,7 @@ See `EnergyDataHelper.java` for the simulation logic.
 
 ```sql
 SELECT COUNT(*) FROM energy_ks.sensor_readings_by_asset;
--- Should show: 306000
+-- Should show: 3060000 (3+ million records)
 ```
 
 ### Part 3: Connect Cassandra to watsonx.data
@@ -567,16 +591,7 @@ ORDER BY hour;
 
 ```sql
 -- Compare real-time vs historical
-SELECT 'Real-Time (Cassandra)' as source, AVG(power_output) as avg_power
-FROM energy.energy_ks.sensor_readings_by_asset
-WHERE asset_name = 'North-WT-001'
-ALLOW FILTERING
 
-UNION ALL
-
-SELECT 'Historical (Iceberg)' as source, AVG(power_output) as avg_power
-FROM iceberg_data.energy_data.sensor_readings
-WHERE asset_name = 'North-WT-001';
 ```
 
 ---
