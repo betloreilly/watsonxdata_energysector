@@ -61,7 +61,7 @@ OpenSearch is a **search and analytics engine** purpose-built for these challeng
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Morning Shift Dashboard - December 3, 2024                     │
+│  Morning Shift Dashboard - December 3, 2025                     │
 ├─────────────────────┬───────────────────┬───────────────────────┤
 │  TOTAL GENERATION   │  FLEET HEALTH     │  ACTIVE ALERTS        │
 │     4,247 MW        │     94.2%         │     3 warnings        │
@@ -142,7 +142,7 @@ She clicks "Drill Down by Region" and OpenSearch instantly aggregates 3 months o
 
 ## Can OpenSearch be Added to watsonx.data?
 
-### Current State (December 2024)
+### Current State (December 2025)
 
 **Direct integration is not yet available.** watsonx.data does not currently have a native OpenSearch connector.
 
