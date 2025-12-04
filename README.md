@@ -773,14 +773,36 @@ Open these files to see implementation details!
 
 ---
 
+## Optional: OpenSearch Dashboards
+
+Want to add real-time visualization, search, and alerting capabilities? Continue with the **OpenSearch** guide:
+
+**[OpenSearch for Energy Sector](opensearch.md)**
+
+This optional section covers:
+- Setting up OpenSearch with Docker Compose
+- Loading energy sensor data into OpenSearch
+- Building operational dashboards with visualizations
+- Creating search queries for incident investigation
+- Setting up intelligent alerts for high temperature, low efficiency, and high vibration
+
+OpenSearch complements this architecture by providing:
+- **Real-time dashboards** - Visual monitoring of energy operations
+- **Full-text search** - Find any sensor reading or event instantly
+- **Alerting** - Proactive notifications before problems escalate
+- **Anomaly detection** - Automatically flag unusual patterns
+
+---
+
 ## Learn More
 
 - **IBM watsonx.data**: https://www.ibm.com/watsonx/data
 - **Apache Iceberg**: https://iceberg.apache.org/
 - **DataStax HCD**: https://www.datastax.com/products/datastax-hyper-converged-database
+- **OpenSearch**: https://opensearch.org/
 
 ---
 
 **Questions?** Review the Java source code in `energy-iot-demo/src/` for implementation details.
 
-**Ready to run?** Start with the Setup Guide above! 🚀
+**Ready to run?** Start with the Setup Guide above, then continue to the OpenSearch section for dashboards and alerting!
