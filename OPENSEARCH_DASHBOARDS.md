@@ -151,7 +151,7 @@ She clicks "Drill Down by Region" and OpenSearch instantly aggregates 3 months o
 IBM joined the **OpenSearch Software Foundation as a Premier Member** in 2024. This signals commitment to future integration:
 
 - Native OpenSearch connector in watsonx.data
-- Federated queries spanning Iceberg and OpenSearch
+- Federated queries spanning Iceberg, Cassandra, Other databases and OpenSearch
 - Unified data governance across both platforms
 
 ### Today's Architecture
@@ -336,29 +336,7 @@ curl -X PUT "http://localhost:9200/energy-sensor-readings" -H 'Content-Type: app
 - `geo_point`: Enables map visualizations and distance queries
 - `float`: Efficient numeric storage for measurements
 
-### Option A: Generate Sample Data (Quick Demo)
-
-Use this script to quickly generate 7 days of sample energy sensor data:
-
-```bash
-# Install dependencies
-pip3 install opensearch-py
-
-# Run the generator
-python3 scripts/generate_sample_data.py
-```
-
-**What it generates:**
-- 7 days of historical data
-- 1,000 readings per day (7,000 total)
-- 4 asset types: wind_turbine, solar_panel, substation, transmission_line
-- 10 facilities across different regions
-- Realistic power output, temperature, efficiency values
-- Alert levels: normal, warning, critical
-
----
-
-### Option B: Load Data from Cassandra
+### Option A: Load Data from Cassandra
 
 **Python Script (Best for Production)**
 
@@ -533,7 +511,7 @@ pip3 install cassandra-driver opensearch-py
 python3 sync_to_opensearch.py
 ```
 
-### Option C: Spark Job (Best for Large-Scale Production)
+### Option B: Spark Job (Best for Large-Scale Production)
 
 For production workloads with millions of records, use Spark:
 
@@ -607,6 +585,31 @@ curl -X GET "http://localhost:9200/energy-sensor-readings/_count?pretty"
 # Sample a few documents
 curl -X GET "http://localhost:9200/energy-sensor-readings/_search?size=3&pretty"
 ```
+
+---
+
+### Step 3: Generate Sample Data
+
+After loading data from Cassandra (Option A) or Spark (Option B), run this script to add sample data for testing:
+
+```bash
+# Install dependencies
+pip3 install opensearch-py
+
+# Run the generator
+python3 scripts/generate_sample_data.py
+```
+
+**What it generates:**
+- 7 days of historical data
+- 1,000 readings per day (7,000 total)
+- 4 asset types: wind_turbine, solar_panel, substation, transmission_line
+- 10 facilities across different regions
+- Realistic power output, temperature, efficiency values
+- Alert levels: normal, warning, critical
+
+
+After running this script, set the time filter in dashboards to **Last 7 days** to see the data.
 
 ---
 
