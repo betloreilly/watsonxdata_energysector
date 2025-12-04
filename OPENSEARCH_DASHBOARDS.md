@@ -61,14 +61,14 @@ OpenSearch is a **search and analytics engine** purpose-built for these challeng
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  🌅 Morning Shift Dashboard - December 3, 2024                  │
+│  Morning Shift Dashboard - December 3, 2024                     │
 ├─────────────────────┬───────────────────┬───────────────────────┤
 │  TOTAL GENERATION   │  FLEET HEALTH     │  ACTIVE ALERTS        │
 │     4,247 MW        │     94.2%         │     3 warnings        │
 │     ▲ 12% vs 6AM    │     (target: 95%) │     0 critical        │
 ├─────────────────────┴───────────────────┴───────────────────────┤
 │                    ASSET MAP (Live)                              │
-│    🟢 Online: 8,247    🟡 Warning: 241    🔴 Offline: 12        │
+│    [Online: 8,247]    [Warning: 241]    [Offline: 12]           │
 │    [Interactive map showing all facilities]                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  POWER BY REGION (Last 24 Hours)                                │
@@ -94,7 +94,7 @@ This correlation—finding patterns across months of historical data in millisec
 
 **Carlos** receives an alert on his mobile device:
 
-> ⚠️ **Maintenance Prediction Alert**
+> **Maintenance Prediction Alert**
 > 
 > Asset: Solar-Facility-East-12, Panel Array B3
 > Issue: Efficiency dropped 23% over 72 hours
@@ -123,7 +123,7 @@ OpenSearch returns 17 similar cases, sorted by severity. He can now plan an opti
 │  ┌────────────────────┐        ┌────────────────────┐           │
 │  │ Target: 12,500 GWh │        │      97.3%         │           │
 │  │ Actual: 12,847 GWh │        │   (Best quarter    │           │
-│  │    ✓ +2.8%         │        │    in 3 years)     │           │
+│  │    [+2.8%]         │        │    in 3 years)     │           │
 │  └────────────────────┘        └────────────────────┘           │
 │                                                                  │
 │  COST PER MWh (Trend)          TOP PERFORMING REGIONS           │
@@ -213,7 +213,7 @@ mkdir -p ~/opensearch && cd ~/opensearch
 
 2. **Create `docker-compose.yml`** by copying the **Sample Docker Compose file for development** from the official OpenSearch documentation:
 
-   👉 **[OpenSearch Docker Compose for Development](https://docs.opensearch.org/latest/install-and-configure/install-opensearch/docker/#sample-docker-compose-file-for-development)**
+   **[OpenSearch Docker Compose for Development](https://docs.opensearch.org/latest/install-and-configure/install-opensearch/docker/#sample-docker-compose-file-for-development)**
 
    This configuration includes:
    - Two OpenSearch nodes in a cluster
@@ -355,29 +355,6 @@ python3 scripts/generate_sample_data.py
 - 10 facilities across different regions
 - Realistic power output, temperature, efficiency values
 - Alert levels: normal, warning, critical
-
-**Sample output:**
-```
-============================================================
-  Energy Sensor Data Generator for OpenSearch
-============================================================
-✓ Connected to OpenSearch 2.11.0
-✓ Index 'energy-sensor-readings' already exists
-
-Generating 7 days of sample data...
-  Generating data for 2025-11-27...
-  Generating data for 2025-11-28...
-  Generating data for 2025-11-29...
-  ...
-  Total documents generated: 7,000
-
-============================================================
-  ✓ Data generation complete!
-    Documents indexed: 7,000
-    Failed: 0
-    Total in index: 7,000
-============================================================
-```
 
 ---
 
@@ -637,6 +614,8 @@ curl -X GET "http://localhost:9200/energy-sensor-readings/_search?size=3&pretty"
 
 Now the exciting part—turning data into visual insights that drive decisions.
 
+![Dashboards](dashboard.png)
+
 ### Access OpenSearch Dashboards
 
 Open http://localhost:5601 in your browser.
@@ -645,7 +624,7 @@ Open http://localhost:5601 in your browser.
 
 Before creating visualizations, tell Dashboards about your data:
 
-1. Click the **☰ menu** (hamburger icon) in the top left
+1. Click the **Menu** (hamburger icon) in the top left
 2. Go to **Management** → **Dashboards Management** → **Index patterns**
 3. Click **Create index pattern**
 4. Enter `energy-sensor-readings` as the pattern
@@ -655,9 +634,9 @@ Before creating visualizations, tell Dashboards about your data:
 
 ### Step 2: Build Visualizations
 
-> **⚠️ Important**: Use the **Visualize Library** (not Observability Explorer) to create reusable visualizations that can be saved separately.
+> **Important**: Use the **Visualize Library** (not Observability Explorer) to create reusable visualizations that can be saved separately.
 
-1. Click **☰ Menu** → **OpenSearch Dashboards** → **Visualize**
+1. Click **Menu** → **OpenSearch Dashboards** → **Visualize**
 2. Click **Create visualization**
 3. Choose your visualization type
 4. Select index: `energy-sensor-readings`
@@ -667,7 +646,7 @@ Before creating visualizations, tell Dashboards about your data:
 
 #### Visualization 1: Power Generation Trend (Vertical Bar)
 
-1. **☰ Menu** → **Visualize** → **Create visualization**
+1. **Menu** → **Visualize** → **Create visualization**
 2. Select **Vertical Bar**
 3. Select index: `energy-sensor-readings`
 4. Configure:
@@ -678,14 +657,14 @@ Before creating visualizations, tell Dashboards about your data:
 | **Buckets** | X-axis → Aggregation: `Date Histogram`, Field: `reading_timestamp`, Interval: `Daily` |
 | **Buckets** | Add → Split Series → Aggregation: `Terms`, Field: `asset_type` |
 
-5. Click ▶️ **Apply changes**
+5. Click **Apply changes**
 6. **Save** → Name: `Energy - Power Generation Trend`
 
 ---
 
 #### Visualization 2: Fleet Health Overview (Pie Chart)
 
-1. **☰ Menu** → **Visualize** → **Create visualization**
+1. **Menu** → **Visualize** → **Create visualization**
 2. Select **Pie**
 3. Select index: `energy-sensor-readings`
 4. Configure:
@@ -695,14 +674,14 @@ Before creating visualizations, tell Dashboards about your data:
 | **Metrics** | Slice Size → Aggregation: `Count` |
 | **Buckets** | Split Slices → Aggregation: `Terms`, Field: `alert_level` |
 
-5. Click ▶️ **Apply changes**
+5. Click **Apply changes**
 6. **Save** → Name: `Energy - Fleet Health Overview`
 
 ---
 
 #### Visualization 3: Average Temperature by Asset Type (Horizontal Bar)
 
-1. **☰ Menu** → **Visualize** → **Create visualization**
+1. **Menu** → **Visualize** → **Create visualization**
 2. Select **Horizontal Bar**
 3. Select index: `energy-sensor-readings`
 4. Configure:
@@ -712,14 +691,14 @@ Before creating visualizations, tell Dashboards about your data:
 | **Metrics** | Y-axis → Aggregation: `Average`, Field: `temperature` |
 | **Buckets** | X-axis → Aggregation: `Terms`, Field: `asset_type` |
 
-5. Click ▶️ **Apply changes**
+5. Click **Apply changes**
 6. **Save** → Name: `Energy - Avg Temperature by Asset`
 
 ---
 
 #### Visualization 4: Power Output by Facility (Vertical Bar)
 
-1. **☰ Menu** → **Visualize** → **Create visualization**
+1. **Menu** → **Visualize** → **Create visualization**
 2. Select **Vertical Bar**
 3. Select index: `energy-sensor-readings`
 4. Configure:
@@ -729,14 +708,14 @@ Before creating visualizations, tell Dashboards about your data:
 | **Metrics** | Y-axis → Aggregation: `Sum`, Field: `power_output` |
 | **Buckets** | X-axis → Aggregation: `Terms`, Field: `facility_name`, Size: `10` |
 
-5. Click ▶️ **Apply changes**
+5. Click **Apply changes**
 6. **Save** → Name: `Energy - Power by Facility`
 
 ---
 
 #### Visualization 5: Top Assets by Power Output (Horizontal Bar)
 
-1. **☰ Menu** → **Visualize** → **Create visualization**
+1. **Menu** → **Visualize** → **Create visualization**
 2. Select **Horizontal Bar**
 3. Select index: `energy-sensor-readings`
 4. Configure:
@@ -747,14 +726,14 @@ Before creating visualizations, tell Dashboards about your data:
 | **Buckets** | X-axis → Aggregation: `Terms`, Field: `asset_name`, Size: `10` |
 | **Buckets** | (same row) Order By: `metric: Sum of power_output`, Order: `Descending` |
 
-5. Click ▶️ **Apply changes**
+5. Click **Apply changes**
 6. **Save** → Name: `Energy - Top Assets`
 
 ---
 
 #### Visualization 6: Efficiency Distribution (Vertical Bar)
 
-1. **☰ Menu** → **Visualize** → **Create visualization**
+1. **Menu** → **Visualize** → **Create visualization**
 2. Select **Vertical Bar**
 3. Select index: `energy-sensor-readings`
 4. Configure:
@@ -764,7 +743,7 @@ Before creating visualizations, tell Dashboards about your data:
 | **Metrics** | Y-axis → Aggregation: `Count` |
 | **Buckets** | X-axis → Aggregation: `Histogram`, Field: `efficiency`, Interval: `5` |
 
-5. Click ▶️ **Apply changes**
+5. Click **Apply changes**
 6. **Save** → Name: `Energy - Efficiency Distribution`
 
 ---
@@ -784,7 +763,7 @@ Before creating visualizations, tell Dashboards about your data:
 
 ### Step 3: Assemble the Dashboard
 
-1. **☰ Menu** → **OpenSearch Dashboards** → **Dashboard**
+1. **Menu** → **OpenSearch Dashboards** → **Dashboard**
 2. Click **Create dashboard**
 3. Click **Add**
 4. Select each visualization you created:
@@ -802,7 +781,7 @@ Before creating visualizations, tell Dashboards about your data:
 
 ## Part 4: Search Queries
 
-Run these queries in **Dev Tools** (☰ Menu → Management → Dev Tools).
+Run these queries in **Dev Tools** (Menu → Management → Dev Tools).
 
 ---
 
@@ -1044,9 +1023,11 @@ GET energy-sensor-readings/_search
 
 Don't wait for problems—let OpenSearch notify you proactively.
 
+![Alerts](alerting.png)
+
 ### Alert 1: High Temperature Warning
 
-1. Go to **☰ Menu** → **OpenSearch Plugins** → **Alerting**
+1. Go to **Menu** → **OpenSearch Plugins** → **Alerting**
 2. Click **Create monitor**
 
 **Step 1: Monitor Details**
@@ -1092,7 +1073,7 @@ Don't wait for problems—let OpenSearch notify you proactively.
 3. Message template:
 
 ```
-🚨 HIGH TEMPERATURE ALERT
+HIGH TEMPERATURE ALERT
 
 Assets reporting temperatures above 85°C detected.
 Check the Energy Operations Dashboard for details.
@@ -1288,12 +1269,12 @@ Here's how OpenSearch fits into your energy data architecture:
 
 **Together, these systems provide:**
 
-✅ Sub-second writes (Cassandra)  
-✅ Petabyte-scale history (Iceberg)  
-✅ Complex SQL analytics (watsonx.data)  
-✅ Real-time dashboards (OpenSearch)  
-✅ Intelligent alerting (OpenSearch)  
-✅ Full-text search (OpenSearch)
+- Sub-second writes (Cassandra)
+- Petabyte-scale history (Iceberg)
+- Complex SQL analytics (watsonx.data)
+- Real-time dashboards (OpenSearch)
+- Intelligent alerting (OpenSearch)
+- Full-text search (OpenSearch)
 
 ---
 

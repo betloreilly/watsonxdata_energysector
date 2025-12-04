@@ -2,8 +2,10 @@
 """
 generate_streaming_data.py - Generate continuous streaming data for alert testing
 
-This script sends new sensor readings every few seconds so you can test
-OpenSearch alerts in real-time.
+This script sends new sensor readings every few seconds to trigger all 3 alerts:
+  1. High Temperature (>= 85°C)
+  2. Low Efficiency (<= 60%)
+  3. High Vibration (>= 7)
 
 Usage:
     pip3 install opensearch-py
@@ -29,9 +31,6 @@ INDEX_NAME = 'energy-sensor-readings'
 # How often to send data (seconds)
 INTERVAL = 5
 
-# Set to True to generate some high temperature readings for alert testing
-GENERATE_ALERTS = True
-
 ASSET_TYPES = ['wind_turbine', 'solar_panel', 'substation', 'transmission_line']
 FACILITIES = [
     'North Wind Farm', 'South Wind Farm', 'East Solar Array',
@@ -52,22 +51,38 @@ def connect_opensearch():
     return client
 
 
-def generate_reading(force_high_temp=False):
-    """Generate a single sensor reading"""
+def generate_reading(alert_type=None):
+    """
+    Generate a single sensor reading.
+    
+    alert_type can be:
+      - 'high_temp': Temperature >= 85°C (triggers Alert 1)
+      - 'low_efficiency': Efficiency <= 60% (triggers Alert 2)
+      - 'high_vibration': Vibration >= 7 (triggers Alert 3)
+      - None: Normal reading
+    """
     asset_type = random.choice(ASSET_TYPES)
     facility = random.choice(FACILITIES)
     asset_num = random.randint(1, 50)
     
-    # Normal temperature range
-    if force_high_temp:
-        # Generate HIGH temperature for alert testing (above 85°C)
-        temperature = random.uniform(86, 105)
+    # Default normal values
+    temperature = random.uniform(30, 70)
+    efficiency = random.uniform(75, 95)
+    vibration_level = random.uniform(1, 5)
+    alert_level = 'normal'
+    
+    # Override based on alert type
+    if alert_type == 'high_temp':
+        temperature = random.uniform(86, 105)  # >= 85°C triggers alert
         alert_level = 'critical' if temperature > 95 else 'warning'
-        efficiency = random.uniform(40, 65)
-    else:
-        temperature = random.uniform(25, 75)
-        alert_level = 'normal'
-        efficiency = random.uniform(75, 98)
+    
+    elif alert_type == 'low_efficiency':
+        efficiency = random.uniform(40, 58)  # <= 60% triggers alert
+        alert_level = 'warning'
+    
+    elif alert_type == 'high_vibration':
+        vibration_level = random.uniform(7.2, 9.5)  # >= 7 triggers alert
+        alert_level = 'critical' if vibration_level > 8 else 'warning'
     
     return {
         'asset_id': str(uuid.uuid4()),
@@ -85,7 +100,7 @@ def generate_reading(force_high_temp=False):
         'power_factor': round(random.uniform(0.85, 0.99), 3),
         
         'temperature': round(temperature, 1),
-        'vibration_level': round(random.uniform(0.5, 8.0), 2),
+        'vibration_level': round(vibration_level, 2),
         'efficiency': round(efficiency, 1),
         'capacity_factor': round(random.uniform(0.2, 0.95), 2),
         
@@ -108,21 +123,27 @@ def main():
     print("  Streaming Data Generator for Alert Testing")
     print("=" * 60)
     print(f"  Sending data every {INTERVAL} seconds")
-    print(f"  Generate high temps for alerts: {GENERATE_ALERTS}")
+    print("  Generating data to trigger ALL 3 alerts:")
+    print("    🔥 Alert 1: High Temperature (>= 85°C)")
+    print("    📉 Alert 2: Low Efficiency (<= 60%)")
+    print("    📳 Alert 3: High Vibration (>= 7)")
     print("  Press Ctrl+C to stop")
     print("=" * 60 + "\n")
     
     client = connect_opensearch()
     
     count = 0
-    high_temp_count = 0
+    alert_counts = {'high_temp': 0, 'low_efficiency': 0, 'high_vibration': 0, 'normal': 0}
+    
+    # Cycle through alert types to trigger all 3 alerts
+    alert_cycle = ['high_temp', 'low_efficiency', 'high_vibration', 'normal', 'normal']
     
     try:
         while True:
-            # Every 3rd reading, generate a high temperature if GENERATE_ALERTS is True
-            force_high_temp = GENERATE_ALERTS and (count % 3 == 0)
+            # Rotate through alert types
+            alert_type = alert_cycle[count % len(alert_cycle)]
             
-            reading = generate_reading(force_high_temp=force_high_temp)
+            reading = generate_reading(alert_type=alert_type)
             
             # Index the document
             client.index(
@@ -132,22 +153,40 @@ def main():
             )
             
             count += 1
-            temp_str = f"🔥 {reading['temperature']}°C" if force_high_temp else f"✓ {reading['temperature']}°C"
+            alert_counts[alert_type] += 1
             
-            if force_high_temp:
-                high_temp_count += 1
+            # Format output based on alert type
+            if alert_type == 'high_temp':
+                status = f"🔥 Temp: {reading['temperature']}°C"
+            elif alert_type == 'low_efficiency':
+                status = f"📉 Eff: {reading['efficiency']}%"
+            elif alert_type == 'high_vibration':
+                status = f"📳 Vib: {reading['vibration_level']}"
+            else:
+                status = f"✓ Normal"
             
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Sent reading #{count}: "
-                  f"{reading['asset_name']} | Temp: {temp_str} | Alert: {reading['alert_level']}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] #{count}: "
+                  f"{reading['asset_name'][:25]:25} | {status:20} | {reading['alert_level']}")
             
-            if high_temp_count > 0 and high_temp_count % 5 == 0:
-                print(f"\n  📊 High temp readings sent: {high_temp_count} (should trigger alert!)\n")
+            # Show summary every 10 readings
+            if count % 10 == 0:
+                print(f"\n  📊 Alert Summary:")
+                print(f"     🔥 High Temp:    {alert_counts['high_temp']} readings")
+                print(f"     📉 Low Eff:      {alert_counts['low_efficiency']} readings")
+                print(f"     📳 High Vib:     {alert_counts['high_vibration']} readings")
+                print(f"     ✓  Normal:       {alert_counts['normal']} readings")
+                print(f"  All 3 alerts should be triggering!\n")
             
             time.sleep(INTERVAL)
             
     except KeyboardInterrupt:
-        print(f"\n\n✓ Stopped. Total readings sent: {count}")
-        print(f"  High temperature readings: {high_temp_count}")
+        print(f"\n\n" + "=" * 60)
+        print(f"  ✓ Stopped. Total readings sent: {count}")
+        print(f"     🔥 High Temp:    {alert_counts['high_temp']}")
+        print(f"     📉 Low Eff:      {alert_counts['low_efficiency']}")
+        print(f"     📳 High Vib:     {alert_counts['high_vibration']}")
+        print(f"     ✓  Normal:       {alert_counts['normal']}")
+        print("=" * 60)
 
 
 if __name__ == "__main__":
