@@ -1,0 +1,41 @@
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1,
+    "index.refresh_interval": "5s"
+  },
+  "mappings": {
+    "properties": {
+      "asset_id": { "type": "keyword" },
+      "asset_name": { 
+        "type": "text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "asset_type": { "type": "keyword" },
+      "facility_id": { "type": "keyword" },
+      "facility_name": { 
+        "type": "text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "region": { "type": "keyword" },
+      "reading_timestamp": { "type": "date" },
+      "reading_id": { "type": "keyword" },
+      "power_output": { "type": "float" },
+      "voltage": { "type": "float" },
+      "current": { "type": "float" },
+      "temperature": { "type": "float" },
+      "vibration_level": { "type": "float" },
+      "frequency": { "type": "float" },
+      "power_factor": { "type": "float" },
+      "ambient_temperature": { "type": "float" },
+      "wind_speed": { "type": "float" },
+      "solar_irradiance": { "type": "float" },
+      "operational_status": { "type": "keyword" },
+      "alert_level": { "type": "keyword" },
+      "efficiency": { "type": "float" },
+      "capacity_factor": { "type": "float" },
+      "location": { "type": "geo_point" }
+    }
+  }
+}
+

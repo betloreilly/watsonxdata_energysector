@@ -4,157 +4,127 @@
 
 ---
 
-## The Challenge: When Millions of Sensor Readings Aren't Enough
+## Table of Contents
 
-Picture this: It's 2:47 AM at PowerGrid Energy's control center. An operator notices a sudden dip in power output from the North Wind Farm cluster. They need answers—fast.
+- [A Day in the Life: The Challenge & How OpenSearch Solves It](#a-day-in-the-life-the-challenge--how-opensearch-solves-it)
+- [Why OpenSearch for Energy Operations?](#why-opensearch-for-energy-operations)
+- [Part 1: Setting Up OpenSearch](#part-1-setting-up-opensearch)
+- [Part 2: Loading Energy Sensor Data](#part-2-loading-energy-sensor-data)
+- [Part 3: Building Operational Dashboards](#part-3-building-operational-dashboards)
+- [Part 4: Search Queries](#part-4-search-queries)
+- [Part 5: Setting Up Intelligent Alerts](#part-5-setting-up-intelligent-alerts)
+- [The Complete Picture](#the-complete-picture)
+- [Resources](#resources)
+- [Appendix: Index Mapping](#appendix-index-mapping)
+- [Appendix: Sync Script](#appendix-sync-script)
+
+---
+
+## A Day in the Life: The Challenge & How OpenSearch Solves It
+
+### The Challenge
+
+It's 2:47 AM at PowerGrid Energy's control center. An operator notices a sudden dip in power output from the North Wind Farm cluster. They need answers fast:
 
 - *Which specific turbines are affected?*
 - *Is this a weather event or equipment failure?*
 - *Are there similar patterns from other facilities?*
-- *What happened the last time we saw this behavior?*
 
 With **8,500 sensors** generating **51,000 readings per minute**, the data exists. But finding the needle in this haystack of 73 million daily readings? That's where traditional databases struggle.
 
-**This is why the energy sector needs OpenSearch.**
+### The Solution: OpenSearch in Action
 
----
+**6:00 AM — The Control Room**
 
-## Why OpenSearch for Energy Operations?
-
-### The Problem with Traditional Approaches
-
-Your current architecture handles data storage well:
-
-| System | Strength | Limitation |
-|--------|----------|------------|
-| **Cassandra** | Fast writes, operational queries | No full-text search, limited aggregations |
-| **Iceberg** | Historical analytics, ML-ready | Batch-oriented, not real-time |
-| **watsonx.data** | Complex SQL, federated queries | Limited visualization, no alerting |
-
-But energy operations need something more:
-
-- **Instant search** across billions of records
-- **Real-time dashboards** updating every second
-- **Intelligent alerting** before problems escalate
-- **Pattern discovery** to find "similar events"
-
-### What OpenSearch Brings to the Table
-
-OpenSearch is a **search and analytics engine** purpose-built for these challenges:
-
-| Capability | Energy Use Case |
-|------------|-----------------|
-| **Sub-second search** | Find all turbine failures in the last hour across 100 wind farms |
-| **Real-time aggregations** | Show current power output by region, updating live |
-| **Geo-spatial queries** | Map all assets within 50km of a storm system |
-| **Full-text search** | Search maintenance logs: "gearbox vibration" |
-| **Anomaly detection** | Automatically flag unusual sensor patterns |
-| **Alerting** | Notify on-call engineer when temperature exceeds threshold |
-
----
-
-## A Day in the Life: How OpenSearch Transforms Energy Operations
-
-### 6:00 AM — The Control Room Operator
-
-**Maria** starts her shift at the grid operations center. Her OpenSearch dashboard shows:
+Maria starts her shift. Her OpenSearch dashboard shows everything at a glance:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Morning Shift Dashboard - December 3, 2025                     │
+│  Morning Shift Dashboard                                         │
 ├─────────────────────┬───────────────────┬───────────────────────┤
 │  TOTAL GENERATION   │  FLEET HEALTH     │  ACTIVE ALERTS        │
 │     4,247 MW        │     94.2%         │     3 warnings        │
-│     ▲ 12% vs 6AM    │     (target: 95%) │     0 critical        │
 ├─────────────────────┴───────────────────┴───────────────────────┤
-│                    ASSET MAP (Live)                              │
-│    [Online: 8,247]    [Warning: 241]    [Offline: 12]           │
-│    [Interactive map showing all facilities]                      │
-├─────────────────────────────────────────────────────────────────┤
-│  POWER BY REGION (Last 24 Hours)                                │
+│  POWER BY REGION                                                │
 │  ████████████████████ North: 1,842 MW                           │
 │  ██████████████ South: 1,203 MW                                 │
 │  ██████████ Central: 847 MW                                     │
-│  ███████ Coastal: 355 MW                                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-She clicks on a warning indicator for Wind Farm North-7. OpenSearch instantly returns:
+She clicks a warning indicator for Wind Farm North-7. OpenSearch instantly returns:
 
 > **3 turbines showing elevated vibration** (7.2-7.8 mm/s vs normal 3-4 mm/s)
-> - Turbine-N7-023: Started 47 minutes ago
-> - Turbine-N7-024: Started 52 minutes ago  
-> - Turbine-N7-025: Started 44 minutes ago
+> - Turbine-N7-023, N7-024, N7-025
 >
-> **Similar historical pattern found**: December 2023, same turbines, root cause was ice accumulation on blades.
+> **Similar historical pattern found**: December 2023, same turbines—ice accumulation on blades.
 
-This correlation—finding patterns across months of historical data in milliseconds—is what makes OpenSearch invaluable.
+Finding patterns across months of data in milliseconds, that's what makes OpenSearch invaluable.
 
-### 10:30 AM — The Field Engineer
+**10:30 AM — In the Field**
 
-**Carlos** receives an alert on his mobile device:
+Carlos receives an alert on his tablet:
 
-> **Maintenance Prediction Alert**
-> 
-> Asset: Solar-Facility-East-12, Panel Array B3
-> Issue: Efficiency dropped 23% over 72 hours
-> Probable cause: Soiling (no rain in 8 days, dust index high)
-> Recommendation: Schedule cleaning within 48 hours
-> Estimated generation loss if delayed: 847 kWh/day
+> **Maintenance Alert**: Solar-Facility-East-12, Panel Array B3
+> Efficiency dropped 23% over 72 hours
+> Probable cause: Soiling (no rain in 8 days)
 
-Carlos opens the maintenance dashboard on his tablet. He searches:
+He searches for similar issues:
 
 ```
 "efficiency drop" AND region:East AND asset_type:solar_panel AND last_7_days
 ```
 
-OpenSearch returns 17 similar cases, sorted by severity. He can now plan an optimized cleaning route for the maintenance crew.
-
-### 3:00 PM — The Executive
-
-**Sarah**, VP of Operations, needs to present quarterly performance to the board. She opens the Executive Dashboard:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Q4 2024 Performance Summary                                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  GENERATION vs TARGET          AVAILABILITY                      │
-│  ┌────────────────────┐        ┌────────────────────┐           │
-│  │ Target: 12,500 GWh │        │      97.3%         │           │
-│  │ Actual: 12,847 GWh │        │   (Best quarter    │           │
-│  │    [+2.8%]         │        │    in 3 years)     │           │
-│  └────────────────────┘        └────────────────────┘           │
-│                                                                  │
-│  COST PER MWh (Trend)          TOP PERFORMING REGIONS           │
-│  ┌────────────────────┐        1. North Wind: 102% of target    │
-│  │ $32.40 → $28.70    │        2. Coastal Solar: 98% of target  │
-│  │    ▼ 11.4%         │        3. Central Grid: 96% of target   │
-│  └────────────────────┘                                         │
-│                                                                  │
-│  [Export to PDF] [Schedule Report] [Drill Down by Region]       │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-She clicks "Drill Down by Region" and OpenSearch instantly aggregates 3 months of data across 8,500 assets—something that would take minutes in a traditional database.
+OpenSearch returns 17 similar cases, sorted by severity—now he can plan an optimized route for the maintenance crew.
 
 ---
 
-## Can OpenSearch be Added to watsonx.data?
+## Why OpenSearch for Energy Operations?
 
-### Current State (December 2025)
+### The Gap in Your Current Architecture
 
-**Direct integration is not yet available.** watsonx.data does not currently have a native OpenSearch connector.
+You've built a solid foundation. **Cassandra** handles the firehose of sensor data, 51,000 writes per minute, no problem. **Iceberg** archives years of history for your data scientists to train ML models. **watsonx.data** lets analysts run complex SQL across both.
 
-### The Good News
+But here's the thing: *these tools are optimized for storage and analytics, not real-time operations*.
 
-IBM joined the **OpenSearch Software Foundation as a Premier Member** in 2024. This signals commitment to future integration:
+Your control room operators need something different, instant search across millions of records, live dashboards that update every second, and alerts that fire the moment something goes wrong. That's a different kind of workload, and it calls for a purpose-built solution.
+
+**That's where OpenSearch comes in.**
+
+### What OpenSearch Brings
+
+OpenSearch is a **search and analytics engine** purpose-built for real-time operations:
+
+| What You Need | How OpenSearch Delivers |
+|---------------|------------------------|
+| *"Find all turbine failures in the last hour"* | **Sub-second search** across billions of records |
+| *"Show me live power output by region"* | **Real-time dashboards** updating every second |
+| *"Which assets are near the incoming storm?"* | **Geo-spatial queries** with interactive maps |
+| *"Search maintenance logs for gearbox issues"* | **Full-text search** across all your data |
+| *"Alert me before equipment fails"* | **Intelligent alerting** with custom thresholds |
+| *"What happened last time we saw this pattern?"* | **Pattern discovery** across historical data |
+
+### The Bottom Line
+
+OpenSearch is built on a **proven open-source foundation** with a thriving community driving continuous innovation. It scales seamlessly from development environments to petabytes in production. Most importantly, it turns your existing data into **actionable intelligence**: catching a failing turbine 30 minutes earlier, dispatching maintenance crews more efficiently, or giving executives instant visibility into fleet performance.
+
+The ROI? One prevented unplanned outage can save hundreds of thousands of dollars. OpenSearch helps you find the signal in the noise before it becomes a problem.
+
+---
+
+### Today's Architecture
+
+#### Can OpenSearch be Added to watsonx.data?
+
+Current State (December 2025) : **Direct integration is not yet available.** watsonx.data does not currently have a native OpenSearch connector.
+
+#### The Good News :  IBM joined the **OpenSearch Software Foundation as a Premier Member** . 
+
+This signals commitment to future integration:
 
 - Native OpenSearch connector in watsonx.data
 - Federated queries spanning Iceberg, Cassandra, Other databases and OpenSearch
 - Unified data governance across both platforms
-
-### Today's Architecture
 
 Until native integration arrives, OpenSearch runs alongside your existing stack:
 
@@ -266,350 +236,64 @@ ssh -i your-key.pem -N \
 
 ## Part 2: Loading Energy Sensor Data
 
-### Understanding the Data Model
+### Data Flow
 
-Before loading data, let's understand what we're indexing. Each sensor reading contains:
-
-| Field Category | Fields | Purpose |
-|---------------|--------|---------|
-| **Identifiers** | asset_id, reading_id, facility_id | Link readings to physical assets |
-| **Location** | region, facility_name, latitude, longitude | Geographic analysis & mapping |
-| **Measurements** | power_output, voltage, current, temperature, vibration_level | Equipment performance |
-| **Environment** | wind_speed, solar_irradiance, ambient_temperature | External conditions |
-| **Status** | operational_status, alert_level, efficiency | Health indicators |
-
-### Create the Index with Energy-Optimized Mappings
-
-This index schema is designed for energy sector queries:
-
-```bash
-curl -X PUT "http://localhost:9200/energy-sensor-readings" -H 'Content-Type: application/json' -d'
-{
-  "settings": {
-    "number_of_shards": 3,
-    "number_of_replicas": 1,
-    "index.refresh_interval": "5s"
-  },
-  "mappings": {
-    "properties": {
-      "asset_id": { "type": "keyword" },
-      "asset_name": { 
-        "type": "text",
-        "fields": { "keyword": { "type": "keyword" } }
-      },
-      "asset_type": { "type": "keyword" },
-      "facility_id": { "type": "keyword" },
-      "facility_name": { 
-        "type": "text",
-        "fields": { "keyword": { "type": "keyword" } }
-      },
-      "region": { "type": "keyword" },
-      "reading_timestamp": { "type": "date" },
-      "reading_id": { "type": "keyword" },
-      
-      "power_output": { "type": "float" },
-      "voltage": { "type": "float" },
-      "current": { "type": "float" },
-      "temperature": { "type": "float" },
-      "vibration_level": { "type": "float" },
-      "frequency": { "type": "float" },
-      "power_factor": { "type": "float" },
-      
-      "ambient_temperature": { "type": "float" },
-      "wind_speed": { "type": "float" },
-      "solar_irradiance": { "type": "float" },
-      
-      "operational_status": { "type": "keyword" },
-      "alert_level": { "type": "keyword" },
-      "efficiency": { "type": "float" },
-      "capacity_factor": { "type": "float" },
-      
-      "location": { "type": "geo_point" }
-    }
-  }
-}'
 ```
-
-**Why these choices?**
-- `keyword`: Exact matching for filters (region, asset_type, alert_level)
-- `text` with `keyword` subfield: Full-text search + exact aggregations (asset_name, facility_name)
-- `geo_point`: Enables map visualizations and distance queries
-- `float`: Efficient numeric storage for measurements
-
-### Option A: Load Data from Cassandra
-
-**Python Script (Best for Production)**
-
-```python
-#!/usr/bin/env python3
-"""
-sync_to_opensearch.py - Load energy sensor data into OpenSearch
-
-This script demonstrates the ETL pattern for energy sector data:
-1. Extract from Cassandra (operational database)
-2. Transform for search optimization (add geo_point, denormalize)
-3. Load into OpenSearch (search & visualization layer)
-"""
-
-from cassandra.cluster import Cluster
-from opensearchpy import OpenSearch, helpers
-from datetime import datetime
-import sys
-
-# Configuration - update these for your environment
-CASSANDRA_HOST = '<your-ec2-private-ip>'  # EC2 private IP
-OPENSEARCH_HOST = 'localhost'              # localhost via SSH tunnel
-
-def connect_cassandra():
-    """Connect to Cassandra cluster"""
-    cluster = Cluster([CASSANDRA_HOST])
-    session = cluster.connect('energy_ks')
-    print(f"✓ Connected to Cassandra at {CASSANDRA_HOST}")
-    return cluster, session
-
-def connect_opensearch():
-    """Connect to OpenSearch cluster"""
-    client = OpenSearch(
-        hosts=[{'host': OPENSEARCH_HOST, 'port': 9200}],
-        http_compress=True,
-        use_ssl=False,
-        verify_certs=False
-    )
-    # Test connection
-    info = client.info()
-    print(f"✓ Connected to OpenSearch {info['version']['number']}")
-    return client
-
-def fetch_sensor_readings(session, batch_size=10000):
-    """
-    Fetch sensor readings from Cassandra.
-    
-    In production, you'd typically:
-    - Filter by time range for incremental loads
-    - Use token-aware pagination for large datasets
-    """
-    query = f"SELECT * FROM sensor_readings_by_asset LIMIT {batch_size}"
-    print(f"  Fetching up to {batch_size:,} readings from Cassandra...")
-    return session.execute(query)
-
-def transform_for_opensearch(row):
-    """
-    Transform a Cassandra row into an OpenSearch document.
-    
-    Key transformations:
-    - Convert UUIDs to strings (OpenSearch doesn't support UUID type)
-    - Create geo_point from lat/lon for map visualizations
-    - Format timestamp for OpenSearch date type
-    """
-    doc = {
-        '_index': 'energy-sensor-readings',
-        '_id': str(row.reading_id),  # Use reading_id as document ID for upserts
-        '_source': {
-            # Identifiers
-            'asset_id': str(row.asset_id),
-            'asset_name': row.asset_name,
-            'asset_type': row.asset_type,
-            'facility_id': str(row.facility_id),
-            'facility_name': row.facility_name,
-            'region': row.region,
-            'reading_id': str(row.reading_id),
-            
-            # Timestamp
-            'reading_timestamp': row.reading_timestamp.isoformat() if row.reading_timestamp else None,
-            
-            # Sensor measurements
-            'power_output': row.power_output,
-            'voltage': row.voltage,
-            'current': row.current,
-            'temperature': row.temperature,
-            'vibration_level': row.vibration_level,
-            'frequency': row.frequency,
-            'power_factor': row.power_factor,
-            
-            # Environmental data
-            'ambient_temperature': row.ambient_temperature,
-            'wind_speed': row.wind_speed,
-            'solar_irradiance': row.solar_irradiance,
-            
-            # Status
-            'operational_status': row.operational_status,
-            'alert_level': row.alert_level,
-            'efficiency': row.efficiency,
-            'capacity_factor': row.capacity_factor,
-            
-            # Geo-location (for maps)
-            'location': {
-                'lat': row.latitude,
-                'lon': row.longitude
-            } if row.latitude and row.longitude else None
-        }
-    }
-    return doc
-
-def load_to_opensearch(opensearch_client, rows):
-    """
-    Bulk load documents into OpenSearch.
-    
-    Uses the bulk API for efficiency - much faster than individual inserts.
-    """
-    def generate_actions():
-        count = 0
-        for row in rows:
-            yield transform_for_opensearch(row)
-            count += 1
-            if count % 10000 == 0:
-                print(f"  Processed {count:,} documents...")
-        print(f"  Total processed: {count:,} documents")
-    
-    print("  Loading into OpenSearch...")
-    success, failed = helpers.bulk(
-        opensearch_client,
-        generate_actions(),
-        chunk_size=1000,
-        request_timeout=60
-    )
-    return success, failed
-
-def main():
-    print("\n" + "="*60)
-    print("Energy Sensor Data → OpenSearch Sync")
-    print("="*60 + "\n")
-    
-    # Connect to data sources
-    cassandra_cluster, cassandra_session = connect_cassandra()
-    opensearch_client = connect_opensearch()
-    
-    print("\nStep 1: Extracting from Cassandra")
-    rows = fetch_sensor_readings(cassandra_session, batch_size=100000)
-    
-    print("\nStep 2: Transforming and Loading to OpenSearch")
-    success, failed = load_to_opensearch(opensearch_client, rows)
-    
-    print("\n" + "="*60)
-    print(f"✓ Sync Complete!")
-    print(f"  Documents indexed: {success:,}")
-    print(f"  Failed: {failed}")
-    print("="*60 + "\n")
-    
-    # Cleanup
-    cassandra_cluster.shutdown()
-
-if __name__ == "__main__":
-    main()
-```
-
-**Run the sync:**
-
-```bash
-# Install pip (if not already installed)
-sudo yum install python3-pip -y
-
-# Install dependencies
-pip3 install cassandra-driver opensearch-py
-
-# Run the sync script
-python3 sync_to_opensearch.py
-```
-
-### Option B: Spark Job (Best for Large-Scale Production)
-
-For production workloads with millions of records, use Spark:
-
-```java
-// Add to pom.xml:
-// <dependency>
-//     <groupId>org.opensearch.client</groupId>
-//     <artifactId>opensearch-spark-30_2.12</artifactId>
-//     <version>1.2.0</version>
-// </dependency>
-
-package com.ibm.wxd.datalabs.demo.cass_spark_iceberg;
-
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
-import static org.apache.spark.sql.functions.*;
-
-/**
- * Spark ETL job to sync Iceberg data to OpenSearch.
- * 
- * This enables real-time dashboards on top of historical data.
- */
-public class IcebergToOpenSearch {
-    
-    public static void main(String[] args) {
-        SparkSession spark = SparkSession.builder()
-            .appName("Energy Data to OpenSearch")
-            .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog")
-            .config("spark.sql.catalog.spark_catalog.type", "hadoop")
-            .config("spark.sql.catalog.spark_catalog.warehouse", "s3a://iceberg-bucket/")
-            .getOrCreate();
-        
-        System.out.println("Reading from Iceberg...");
-        
-        Dataset<Row> sensorData = spark.read()
-            .format("iceberg")
-            .load("spark_catalog.energy_data.sensor_readings");
-        
-        // Add geo_point structure for OpenSearch maps
-        Dataset<Row> enrichedData = sensorData
-            .withColumn("location", 
-                when(col("latitude").isNotNull().and(col("longitude").isNotNull()),
-                    struct(col("latitude").alias("lat"), col("longitude").alias("lon")))
-                .otherwise(lit(null)));
-        
-        System.out.println("Writing to OpenSearch...");
-        
-        enrichedData.write()
-            .format("org.opensearch.spark.sql")
-            .option("opensearch.nodes", "<your-ec2-private-ip>")
-            .option("opensearch.port", "9200")
-            .option("opensearch.resource", "energy-sensor-readings")
-            .option("opensearch.mapping.id", "reading_id")
-            .option("opensearch.write.operation", "upsert")
-            .mode("append")
-            .save();
-        
-        System.out.println("✓ Sync complete!");
-        spark.stop();
-    }
-}
-```
-
-### Verify Data Load
-
-```bash
-# Check document count
-curl -X GET "http://localhost:9200/energy-sensor-readings/_count?pretty"
-
-# Sample a few documents
-curl -X GET "http://localhost:9200/energy-sensor-readings/_search?size=3&pretty"
+┌────────────────┐                        ┌────────────────┐                        ┌────────────────┐
+│                │    Python ETL Script   │                │                        │                │
+│   Cassandra    │  ────────────────────► │   OpenSearch   │  ────────────────────► │   Dashboards   │
+│    (source)    │   sync_to_opensearch   │    (search)    │                        │  (visualize)   │
+│                │                        │                │                        │                │
+└────────────────┘                        └────────────────┘                        └────────────────┘
 ```
 
 ---
 
-### Step 3: Generate Sample Data
-
-After loading data from Cassandra (Option A) or Spark (Option B), run this script to add sample data for testing:
+### Step 1: Create the Index
 
 ```bash
-# Install dependencies
-pip3 install opensearch-py
+curl -X PUT "http://localhost:9200/energy-sensor-readings" \
+  -H 'Content-Type: application/json' \
+  -d @scripts/opensearch_index_mapping.json
+```
 
-# Run the generator
+> **Note**: See [Appendix: Index Mapping](#appendix-index-mapping) for the full schema.
+
+---
+
+### Step 2: Run the Sync Script
+
+```bash
+pip3 install cassandra-driver opensearch-py && python3 scripts/sync_to_opensearch.py
+```
+
+> **Note**: Update `CASSANDRA_HOST` in `scripts/sync_to_opensearch.py` first. See [Appendix: Sync Script](#appendix-sync-script) for details.
+
+---
+
+### Step 3: Generate Sample Data (Optional)
+
+If you don't have Cassandra data yet, generate sample data for dashboards:
+
+```bash
 python3 scripts/generate_sample_data.py
 ```
 
-**What it generates:**
-- 7 days of historical data
-- 1,000 readings per day (7,000 total)
-- 4 asset types: wind_turbine, solar_panel, substation, transmission_line
-- 10 facilities across different regions
-- Realistic power output, temperature, efficiency values
-- Alert levels: normal, warning, critical
+---
 
+### Step 4: Verify Document Count
 
-After running this script, set the time filter in dashboards to **Last 7 days** to see the data.
+```bash
+curl -s "http://localhost:9200/energy-sensor-readings/_count" | python3 -c "import sys,json; print(f'Documents: {json.load(sys.stdin)[\"count\"]:,}')"
+```
+
+---
+
+### Step 5: Open Dashboards
+
+Navigate to **http://localhost:5601** in your browser.
+
+Set time filter to **Last 7 days** to see the data.
 
 ---
 
@@ -617,11 +301,7 @@ After running this script, set the time filter in dashboards to **Last 7 days** 
 
 Now the exciting part—turning data into visual insights that drive decisions.
 
-![Dashboards](dashboard.png)
-
-### Access OpenSearch Dashboards
-
-Open http://localhost:5601 in your browser.
+![Dashboards](images/dashboard.png)
 
 ### Step 1: Create Index Pattern
 
@@ -644,6 +324,8 @@ Before creating visualizations, tell Dashboards about your data:
 3. Choose your visualization type
 4. Select index: `energy-sensor-readings`
 5. Configure and **Save with a unique name**
+
+![Building Visualizations](images/visual.gif)
 
 ---
 
@@ -1026,7 +708,7 @@ GET energy-sensor-readings/_search
 
 Don't wait for problems—let OpenSearch notify you proactively.
 
-![Alerts](alerting.png)
+![Alerts](images/alerting.png)
 
 ### Alert 1: High Temperature Warning
 
@@ -1154,110 +836,6 @@ This script sends new data every 5 seconds with some high temperature readings t
 
 ---
 
-## Part 6: Additional Dashboard Ideas
-
-### Operations Control Center
-
-| Panel | Type | Metric | Bucket |
-|-------|------|--------|--------|
-| Total Generation Now | Metric | Sum of `power_output` | - |
-| Generation Trend | Area | Sum of `power_output` | Date Histogram |
-| Fleet Status | Pie | Count | Terms on `operational_status` |
-| Alert Summary | Pie | Count | Terms on `alert_level` |
-| Active Alerts Table | Data Table | Count | Terms on `asset_name` (filter: `alert_level: warning OR critical`) |
-
-### Maintenance Dashboard
-
-| Panel | Type | Metric | Bucket |
-|-------|------|--------|--------|
-| Avg Efficiency Trend | Area | Average of `efficiency` | Date Histogram + Split by `asset_type` |
-| High Vibration Assets | Data Table | Max of `vibration_level` | Terms on `asset_name` |
-| Temperature by Asset | Horizontal Bar | Average of `temperature` | Terms on `asset_name` |
-| Maintenance Priority | Data Table | Max of `temperature`, Max of `vibration_level` | Terms on `asset_name` |
-
-### Executive Summary
-
-| Panel | Type | Metric | Bucket |
-|-------|------|--------|--------|
-| Total Generation | Metric | Sum of `power_output` | - |
-| Regional Comparison | Vertical Bar | Sum of `power_output` | Terms on `region` |
-| Avg Efficiency | Gauge | Average of `efficiency` | - |
-| Generation Over Time | Area | Sum of `power_output` | Date Histogram (daily) |
-
-### Renewable Performance
-
-| Panel | Type | Metric | Bucket |
-|-------|------|--------|--------|
-| Power by Asset Type | Pie | Sum of `power_output` | Terms on `asset_type` |
-| Wind Speed vs Power | Line | Avg of `power_output`, Avg of `wind_speed` | Date Histogram |
-| Solar Irradiance Impact | Area | Sum of `power_output` | Date Histogram (filter: `asset_type: solar_panel`) |
-| Efficiency by Region | Horizontal Bar | Average of `efficiency` | Terms on `region` |
-
----
-
-## Best Practices for Energy Sector Deployments
-
-### Data Management
-
-**Index Lifecycle Management** - Keep recent data fast, archive old data:
-
-```json
-PUT _ilm/policy/energy-sensor-policy
-{
-  "policy": {
-    "phases": {
-      "hot": {
-        "min_age": "0ms",
-        "actions": {
-          "rollover": {
-            "max_size": "50gb",
-            "max_age": "1d"
-          },
-          "set_priority": { "priority": 100 }
-        }
-      },
-      "warm": {
-        "min_age": "7d",
-        "actions": {
-          "shrink": { "number_of_shards": 1 },
-          "forcemerge": { "max_num_segments": 1 },
-          "set_priority": { "priority": 50 }
-        }
-      },
-      "cold": {
-        "min_age": "30d",
-        "actions": {
-          "set_priority": { "priority": 0 }
-        }
-      },
-      "delete": {
-        "min_age": "90d",
-        "actions": { "delete": {} }
-      }
-    }
-  }
-}
-```
-
-### Security (Production)
-
-1. **Enable security plugin** - Authentication and TLS
-2. **Role-based access**:
-   - `operators`: Read dashboards, no data modification
-   - `engineers`: Read/search data, manage alerts
-   - `admins`: Full access
-3. **Audit logging** - Track who accessed what data
-4. **Network isolation** - OpenSearch on private subnet only
-
-### Performance Optimization
-
-1. **Shard sizing**: Aim for 10-50GB per shard
-2. **Refresh interval**: 5-30 seconds based on dashboard needs
-3. **Use date-based indices** for high-volume data: `energy-readings-2024.12.03`
-4. **Pre-aggregate** metrics for historical dashboards
-
----
-
 ## The Complete Picture
 
 Here's how OpenSearch fits into your energy data architecture:
@@ -1281,24 +859,152 @@ Here's how OpenSearch fits into your energy data architecture:
 
 ---
 
-## Next Steps
-
-1. **Deploy OpenSearch** using the Docker Compose setup
-2. **Load your data** using the Python script or Spark job
-3. **Create the Operations Dashboard** first—immediate value for control room
-4. **Set up critical alerts** for temperature and generation drops
-5. **Train your team** on search queries and dashboard customization
-6. **Schedule incremental syncs** from Cassandra/Iceberg to keep data fresh
-
----
-
 ## Resources
 
+**Related Guides:**
+- **[Advanced Dashboards Guide](advanced_dashboard.md)** — Controls, maps, metrics panels, dual-axis charts
+
+**External Documentation:**
 - **OpenSearch Documentation**: https://opensearch.org/docs/latest/
 - **OpenSearch Dashboards Guide**: https://opensearch.org/docs/latest/dashboards/
 - **Alerting Plugin**: https://opensearch.org/docs/latest/observing-your-data/alerting/
 - **Anomaly Detection**: https://opensearch.org/docs/latest/observing-your-data/ad/
 - **OpenSearch Community Forum**: https://forum.opensearch.org/
+
+---
+
+## Appendix: Index Mapping
+
+<details>
+<summary><b>Full index schema for energy-sensor-readings</b></summary>
+
+```json
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1,
+    "index.refresh_interval": "5s"
+  },
+  "mappings": {
+    "properties": {
+      "asset_id": { "type": "keyword" },
+      "asset_name": { 
+        "type": "text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "asset_type": { "type": "keyword" },
+      "facility_id": { "type": "keyword" },
+      "facility_name": { 
+        "type": "text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "region": { "type": "keyword" },
+      "reading_timestamp": { "type": "date" },
+      "reading_id": { "type": "keyword" },
+      "power_output": { "type": "float" },
+      "voltage": { "type": "float" },
+      "current": { "type": "float" },
+      "temperature": { "type": "float" },
+      "vibration_level": { "type": "float" },
+      "frequency": { "type": "float" },
+      "power_factor": { "type": "float" },
+      "ambient_temperature": { "type": "float" },
+      "wind_speed": { "type": "float" },
+      "solar_irradiance": { "type": "float" },
+      "operational_status": { "type": "keyword" },
+      "alert_level": { "type": "keyword" },
+      "efficiency": { "type": "float" },
+      "capacity_factor": { "type": "float" },
+      "location": { "type": "geo_point" }
+    }
+  }
+}
+```
+
+**Field types explained:**
+- `keyword`: Exact matching for filters (region, asset_type, alert_level)
+- `text` + `keyword`: Full-text search + exact aggregations
+- `geo_point`: Map visualizations and distance queries
+- `float`: Numeric measurements
+
+</details>
+
+---
+
+## Appendix: Sync Script
+
+<details>
+<summary><b>Full sync_to_opensearch.py code</b></summary>
+
+```python
+#!/usr/bin/env python3
+"""Sync energy sensor data from Cassandra to OpenSearch"""
+
+from cassandra.cluster import Cluster
+from opensearchpy import OpenSearch, helpers
+
+CASSANDRA_HOST = '<your-ec2-private-ip>'  # Update this
+OPENSEARCH_HOST = 'localhost'
+
+def main():
+    # Connect to Cassandra
+    cluster = Cluster([CASSANDRA_HOST])
+    session = cluster.connect('energy_ks')
+    print(f"✓ Connected to Cassandra")
+    
+    # Connect to OpenSearch
+    client = OpenSearch(
+        hosts=[{'host': OPENSEARCH_HOST, 'port': 9200}],
+        http_compress=True, use_ssl=False, verify_certs=False
+    )
+    print(f"✓ Connected to OpenSearch")
+    
+    # Fetch data
+    rows = session.execute("SELECT * FROM sensor_readings_by_asset LIMIT 100000")
+    
+    # Transform and load
+    def generate_docs():
+        for row in rows:
+            yield {
+                '_index': 'energy-sensor-readings',
+                '_id': str(row.reading_id),
+                '_source': {
+                    'asset_id': str(row.asset_id),
+                    'asset_name': row.asset_name,
+                    'asset_type': row.asset_type,
+                    'facility_id': str(row.facility_id),
+                    'facility_name': row.facility_name,
+                    'region': row.region,
+                    'reading_id': str(row.reading_id),
+                    'reading_timestamp': row.reading_timestamp.isoformat() if row.reading_timestamp else None,
+                    'power_output': row.power_output,
+                    'voltage': row.voltage,
+                    'current': row.current,
+                    'temperature': row.temperature,
+                    'vibration_level': row.vibration_level,
+                    'frequency': row.frequency,
+                    'power_factor': row.power_factor,
+                    'ambient_temperature': row.ambient_temperature,
+                    'wind_speed': row.wind_speed,
+                    'solar_irradiance': row.solar_irradiance,
+                    'operational_status': row.operational_status,
+                    'alert_level': row.alert_level,
+                    'efficiency': row.efficiency,
+                    'capacity_factor': row.capacity_factor,
+                    'location': {'lat': row.latitude, 'lon': row.longitude} 
+                        if row.latitude and row.longitude else None
+                }
+            }
+    
+    success, failed = helpers.bulk(client, generate_docs(), chunk_size=1000)
+    print(f"✓ Indexed {success:,} documents, {failed} failed")
+    cluster.shutdown()
+
+if __name__ == "__main__":
+    main()
+```
+
+</details>
 
 ---
 

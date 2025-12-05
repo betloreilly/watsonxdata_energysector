@@ -8,6 +8,23 @@ This demo shows how to handle IoT sensor data from energy infrastructure (wind t
 
 ---
 
+## Table of Contents
+
+- [Business Scenario](#business-scenario)
+- [Why Two Databases?](#why-two-databases)
+- [Architecture Overview](#architecture-overview)
+- [Requirements](#requirements)
+- [Setup Guide](#setup-guide)
+- [Running the Demo](#running-the-demo)
+- [Data Model Details](#data-model-details)
+- [Understanding the Code](#understanding-the-code)
+- [Business Value](#business-value)
+- [Key Takeaways](#key-takeaways)
+- [Optional: OpenSearch Dashboards](#optional-opensearch-dashboards)
+- [Learn More](#learn-more)
+
+---
+
 ## Business Scenario
 
 **PowerGrid Energy** company operates distributed energy infrastructure:
@@ -161,7 +178,7 @@ ssh -i your-key.pem -L 9444:localhost:9443 -L 8381:localhost:8381 ec2-user@your-
 
 **Open browser** → `https://localhost:9444` (watsonx.data UI)
 
-![watsonx.data Infrastructure Manager](watsonxdata.png)
+![watsonx.data Infrastructure Manager](images/watsonxdata.png)
 
 *watsonx.data Infrastructure Manager showing engines, catalogs, storage, and data sources*
 
@@ -206,7 +223,7 @@ ssh -i your-key.pem -L 9444:localhost:9443 -L 8381:localhost:8381 -L 9000:localh
 
 Access MinIO Console at `http://localhost:9001`
 
-![Minio UI](minio.png)
+![Minio UI](images/minio.png)
 
 **Developer Edition Default Credentials:**
 - Username: `dummyvalue`
@@ -544,7 +561,7 @@ In watsonx.data UI:
 
 ### Part 5: Query the Data
 
-![watsonx.data Query Workspace](query.png)
+![watsonx.data Query Workspace](images/query.png)
 
 Now you can query both Cassandra and Iceberg from watsonx.data!
 
@@ -778,19 +795,6 @@ Open these files to see implementation details!
 Want to add real-time visualization, search, and alerting capabilities? Continue with the **OpenSearch** guide:
 
 **[OpenSearch for Energy Sector](opensearch.md)**
-
-This optional section covers:
-- Setting up OpenSearch with Docker Compose
-- Loading energy sensor data into OpenSearch
-- Building operational dashboards with visualizations
-- Creating search queries for incident investigation
-- Setting up intelligent alerts for high temperature, low efficiency, and high vibration
-
-OpenSearch complements this architecture by providing:
-- **Real-time dashboards** - Visual monitoring of energy operations
-- **Full-text search** - Find any sensor reading or event instantly
-- **Alerting** - Proactive notifications before problems escalate
-- **Anomaly detection** - Automatically flag unusual patterns
 
 ---
 
