@@ -836,29 +836,6 @@ This script sends new data every 5 seconds with some high temperature readings t
 
 ---
 
-## The Complete Picture
-
-Here's how OpenSearch fits into your energy data architecture:
-
-| Layer | Technology | Purpose | Users |
-|-------|------------|---------|-------|
-| **Ingestion** | Cassandra | High-speed sensor writes | IoT gateways |
-| **Analytics** | Iceberg + watsonx.data | Historical analysis, ML | Data scientists |
-| **Visualization** | OpenSearch Dashboards | Real-time monitoring | Operations, executives |
-| **Search** | OpenSearch | Find anything, fast | Everyone |
-| **Alerting** | OpenSearch Alerting | Proactive notifications | Operations, maintenance |
-
-**Together, these systems provide:**
-
-- Sub-second writes (Cassandra)
-- Petabyte-scale history (Iceberg)
-- Complex SQL analytics (watsonx.data)
-- Real-time dashboards (OpenSearch)
-- Intelligent alerting (OpenSearch)
-- Full-text search (OpenSearch)
-
----
-
 ## Resources
 
 **Related Guides:**
