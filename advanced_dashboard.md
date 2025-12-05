@@ -1,13 +1,15 @@
 # Advanced OpenSearch Dashboards for Energy Sector
 
-**Build a Complete Operations Control Center in 10 Visualizations**
+**Build a Complete Operations Control Center**
 
 ![Dashboards](images/advanceddashboard.png)
+
 ---
 
 ## Overview
 
-This guide walks you through building advanced dashboards for energy operations , we focus on **10 essential visualizations** that provide complete operational visibility.
+This guide walks you through building advanced dashboards for energy operations. We focus on **10 essential visualizations** that provide complete operational visibility.
+
 ---
 
 ## Prerequisites
