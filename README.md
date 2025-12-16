@@ -63,37 +63,7 @@ Together, they form a complete solution: Cassandra keeps your operations running
 
 ## Architecture Overview
 
-```
-┌─────────────────────┐
-│   Sensor Devices    │  8,500 assets × 6 readings/minute
-│ (Wind, Solar, etc)  │  = 51,000 readings/minute
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│   Cassandra (HCD)   │  Operational Database
-│                     │  • Fast writes
-│  energy_ks schema   │  • Recent data (hours/days)
-│  sensor_readings    │  • Partitioned by (asset + time)
-└──────────┬──────────┘
-           │
-           │ Spark ETL (optimized - 10-20x faster)
-           ▼
-┌─────────────────────┐
-│  Iceberg (MinIO)    │  Analytics Storage
-│                     │  • Historical data (months/years)
-│  energy_data schema │  • Time partitioned
-│  sensor_readings    │  • Open table format
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│   watsonx.data      │  Query Both!
-│  (Presto Engine)    │  • Federated queries
-│                     │  • Real-time + Historical
-│  Query Workspace    │  • Single SQL interface
-└─────────────────────┘
-```
+![High level Architecture](images/Energy_Architecture.png)
 
 ---
 
