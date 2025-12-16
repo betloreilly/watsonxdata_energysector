@@ -798,11 +798,105 @@ Want to add real-time visualization, search, and alerting capabilities? Continue
 
 ---
 
+## Optional: Using DataStax Astra DB (Cloud Cassandra)
+
+If you prefer to use **DataStax Astra DB** (managed Cassandra-as-a-Service) instead of a local Cassandra installation, you can connect watsonx.data to Astra using the CQL Proxy.
+
+### Prerequisites
+
+1. **Astra DB Account**: Sign up at https://astra.datastax.com/
+2. **Create a Database**: Create a new Serverless (Vector) database
+3. **Generate Token**: Create an application token with Database Administrator permissions
+4. **Get Database ID**: Copy your database ID from the Astra dashboard
+
+### Step 1: Run CQL Proxy with Docker
+
+The CQL Proxy creates a local CQL-compatible endpoint that proxies requests to your Astra database:
+
+```bash
+docker run -d -p 9043:9042 \
+   --name cql-proxy \
+   --restart unless-stopped \
+   datastax/cql-proxy:v0.2.0 \
+   --astra-token <your-astra-token> \
+   --astra-database-id <your-database-id> \
+   --username cassandra \
+   --password cassandra
+```
+
+> **Note**: We use port `9043` to avoid conflicts with any local Cassandra instance on `9042`. You can also use Podman instead of Docker with the same command.
+
+### Step 2: Verify CQL Proxy is Running
+
+```bash
+# Check container status
+docker ps | grep cql-proxy
+
+# View logs
+docker logs cql-proxy
+```
+
+### Step 3: Add Astra as a Data Source in watsonx.data
+
+1. Navigate to **Infrastructure Manager** → **Add Component** → **Cassandra**
+2. Configure the connection:
+   - **Display name**: `astra`
+   - **Hostname**: Your EC2 private IP (e.g., `172.31.26.107`)  
+   - **Port**: `9043`
+   - **Username**: `cassandra`
+   - **Password**: `cassandra`
+   - **Port is SSL enabled**: `Off` (proxy handles SSL to Astra)
+3. Click **Test Connection** and then **Add**
+
+### Step 4: Create Keyspace and Tables in Astra
+
+In the Astra CQL Console or via `cqlsh`, create your keyspace and tables:
+
+-- Create keyspace : You would need to create keyspace energy_iot in Astra UI.
+
+```sql
+-- Create sensor readings table
+CREATE TABLE IF NOT EXISTS energy_iot.sensor_readings (
+    asset_id text,
+    time_bucket text,
+    reading_time timestamp,
+    sensor_type text,
+    value double,
+    unit text,
+    quality_score double,
+    PRIMARY KEY ((asset_id, time_bucket), reading_time)
+) WITH CLUSTERING ORDER BY (reading_time DESC);
+
+-- Create assets table
+CREATE TABLE IF NOT EXISTS energy_iot.assets (
+    asset_id text PRIMARY KEY,
+    asset_name text,
+    asset_type text,
+    location text,
+    latitude double,
+    longitude double,
+    capacity_mw double,
+    installation_date date,
+    status text
+);
+```
+
+### Benefits of Using Astra DB
+
+- **Serverless**: No infrastructure to manage, automatic scaling
+- **Global Distribution**: Multi-region deployments available
+- **Vector Search**: Built-in vector search for AI/ML workloads
+- **Free Tier**: Generous free tier for development and testing
+- **Fully Compatible**: Works seamlessly with watsonx.data federation
+
+---
+
 ## Learn More
 
 - **IBM watsonx.data**: https://www.ibm.com/watsonx/data
 - **Apache Iceberg**: https://iceberg.apache.org/
 - **DataStax HCD**: https://www.datastax.com/products/datastax-hyper-converged-database
+- **DataStax Astra DB**: https://astra.datastax.com/
 - **OpenSearch**: https://opensearch.org/
 
 ---
