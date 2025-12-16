@@ -985,4 +985,12 @@ if __name__ == "__main__":
 
 ---
 
+## Next Step
+
+Ready to build advanced dashboards with interactive controls, geographic maps, and dual-axis charts?
+
+**Continue to: [Advanced Dashboards Guide](advanced_dashboard.md)** — Controls, maps, metrics panels, dual-axis charts
+
+---
+
 **Questions?** The combination of watsonx.data's analytical power with OpenSearch's visualization and search capabilities gives your energy operations complete visibility—from real-time monitoring to historical analysis to predictive insights.

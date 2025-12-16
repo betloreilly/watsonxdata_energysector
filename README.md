@@ -1,8 +1,14 @@
-# Energy IoT Demo - Cassandra to Iceberg
+# Energy IoT Analytics Platform
 
-**Real-time Energy Sector Analytics with IBM watsonx.data**
+**Real-time Energy Sector Analytics with IBM watsonx.data, Cassandra, Iceberg & OpenSearch**
 
-This demo shows how to handle IoT sensor data from energy infrastructure (wind turbines, solar panels, etc.) using Cassandra for operational data and Iceberg for analytics.
+A complete data platform for energy infrastructure IoT data. This demo shows how to handle sensor data from wind turbines, solar panels, and substations using:
+
+- **Cassandra (HCD)** - High-velocity operational data ingestion
+- **Apache Iceberg** - Cost-effective historical analytics storage  
+- **OpenSearch** - Real-time dashboards, search, and alerting
+- **IBM watsonx.data** - Federated queries across all systems
+- **Apache Spark** - ETL pipeline for data movement
 
 **Based on**: This version builds upon [wxd-spark-hcd](https://github.com/michelderu/wxd-spark-hcd) and [cass_spark_iceberg](https://github.ibm.com/pravin-bhat/cass_spark_iceberg/tree/main), updated for EC2 deployment and customized with Energy-sector examples.
 
@@ -11,16 +17,20 @@ This demo shows how to handle IoT sensor data from energy infrastructure (wind t
 ## Table of Contents
 
 - [Business Scenario](#business-scenario)
-- [Why Two Databases?](#why-two-databases)
+- [Why This Architecture?](#why-this-architecture)
 - [Architecture Overview](#architecture-overview)
 - [Requirements](#requirements)
 - [Setup Guide](#setup-guide)
+  - [Step 1: EC2 and watsonx.data](#step-1-set-up-ec2-and-watsonxdata)
+  - [Step 2: Cassandra (DataStax HCD)](#step-2-install-cassandra-datastax-hcd)
+  - [Step 3: Build Demo Application](#step-3-build-the-demo-application)
 - [Running the Demo](#running-the-demo)
+- [OpenSearch Setup & Dashboards](#opensearch-setup--dashboards)
 - [Data Model Details](#data-model-details)
 - [Understanding the Code](#understanding-the-code)
 - [Business Value](#business-value)
 - [Key Takeaways](#key-takeaways)
-- [Optional: OpenSearch Dashboards](#optional-opensearch-dashboards)
+- [Optional: Using DataStax Astra DB](#optional-using-datastax-astra-db-cloud-cassandra)
 - [Learn More](#learn-more)
 
 ---
@@ -49,15 +59,23 @@ Each asset sends sensor data every 10 seconds:
 
 ---
 
-## Why Two Databases?
+## Why This Architecture?
 
-This demo uses two complementary data stores to handle different aspects of IoT data management. Each system is optimized for its specific role in the data pipeline.
+Each component is optimized for a specific workload:
 
-**Cassandra handles operational data** - the recent sensor readings that need to be written and queried quickly. When you have 8,500 sensors sending data every 10 seconds (51,000 inserts per minute), you need a database that can handle high-velocity writes without breaking a sweat. Cassandra excels at this. It's designed for questions like "What's the current status of Turbine-North-001?" or "Show me all critical alerts from the last hour." This is the operational layer where monitoring dashboards and real-time alerting systems get their data.
+| Component | Role | Why This Choice |
+|-----------|------|-----------------|
+| **Cassandra (HCD)** | Operational data | Handles 51K writes/min with sub-second reads. Partition-based data model prevents hotspots. |
+| **Apache Iceberg** | Historical analytics | Open table format on object storage. Time-partitioned for efficient range queries. No vendor lock-in. |
+| **OpenSearch** | Visualization & alerting | Sub-second search across millions of records. Real-time dashboards without SQL. Built-in alerting. |
+| **watsonx.data** | Query federation | Single SQL interface to query Cassandra and Iceberg together. Presto engine optimizes execution. |
+| **Apache Spark** | ETL pipeline | Parallel reads from Cassandra, partitioned writes to Iceberg. Runs as managed service. |
 
-**Iceberg handles historical analytics** - the long-term storage where months or years of data lives. Once operational data ages beyond a few days, it's moved to Iceberg for cost-effective storage and complex analysis. This is where you run queries like "What was average power output last month?" or "Which turbines need maintenance based on vibration trends over the past year?" Iceberg is also ideal for training machine learning models since you can access years of historical patterns without overwhelming your operational database.
-
-Together, they form a complete solution: Cassandra keeps your operations running smoothly with real-time data access, while Iceberg provides the historical depth needed for strategic decisions and predictive analytics.
+**Data Flow:**
+1. Sensors → Cassandra (real-time ingestion)
+2. Cassandra → Spark → Iceberg (batch ETL for historical storage)
+3. Cassandra → OpenSearch (sync for visualization)
+4. watsonx.data queries both Cassandra + Iceberg via federation
 
 ---
 
@@ -78,13 +96,15 @@ Together, they form a complete solution: Cassandra keeps your operations running
 - **Type**: m5.2xlarge (8 vCPU, 32 GB RAM)
 - **OS**: RHEL 8 or RHEL 9
 - **Storage**: 100 GB minimum
-- **Ports**: 22 (SSH), 9443 (watsonx.data)
+- **Ports**: 22 (SSH), 9443 (watsonx.data), 9200 (OpenSearch), 5601 (OpenSearch Dashboards)
 
 ### Software Required
 - Docker/Podman - Container runtime
-- Kubernetes - Container orchestration
+- Docker Compose - For OpenSearch cluster
+- Kubernetes - For watsonx.data
 - Java 11 or 17 - For DataStax HCD
 - Maven - For building Java applications
+- Python 3.8+ - For data sync scripts
 
 ---
 
@@ -732,39 +752,69 @@ Open these files to see implementation details!
 ## Business Value
 
 ### For Operations Team
-- Real-time monitoring (Cassandra)
-- Immediate alerts for critical issues
-- Dashboard queries in milliseconds
+- Real-time monitoring via OpenSearch dashboards
+- Immediate alerts for critical issues (temperature, vibration, efficiency)
+- Visual fleet overview without writing SQL
+- Sub-second search across millions of records
+- Geographic view of all assets on interactive maps
 
 ### For Analytics Team  
 - Historical trends and patterns (Iceberg)
 - Predictive maintenance models
-- Optimization insights
+- Federated queries comparing real-time vs historical baselines
+- Data ready for ML model training
+
+### For Field Engineers
+- Mobile-friendly dashboards
+- Automatic alert notifications (Slack, email, PagerDuty)
+- Search for specific assets or issues instantly
+- Maintenance priority lists based on sensor data
 
 ### For Business
-- Reduce downtime (predictive maintenance)
+- Reduce downtime (predictive maintenance catches issues early)
 - Optimize operations (data-driven decisions)
-- Meet compliance (regulatory reporting)
+- Meet compliance (regulatory reporting from historical data)
 - Future-ready (open standards, AI-ready)
+- ROI: One prevented outage can save $500,000+
 
 ---
 
 ## Key Takeaways
 
-1. **Denormalized is OK for IoT** - Don't over-engineer with star schemas
-2. **Use right tool for job** - Cassandra for operational, Iceberg for analytics
-3. **Partitioning matters** - Both time_bucket (Cassandra) and year/month/day (Iceberg)
-4. **Performance optimization** - Parallel reads, proper connector settings
-5. **Open standards** - Iceberg enables flexibility and AI integration
-6. **Federated queries** - Query multiple systems as one (watsonx.data power!)
+1. **Use the right tool for each job**:
+   - Cassandra for high-velocity writes (51K/min)
+   - Iceberg for cost-effective historical storage
+   - OpenSearch for visualization and alerting
+   - watsonx.data for federated queries
+
+2. **Denormalized is OK for IoT** - Don't over-engineer with star schemas
+
+3. **Partitioning matters** - time_bucket in Cassandra, year/month/day in Iceberg
+
+4. **Visual access for non-SQL users** - OpenSearch dashboards enable self-service analytics
+
+5. **Open standards** - Iceberg and OpenSearch are open source, no vendor lock-in
+
+6. **Federated queries** - Query Cassandra and Iceberg together with one SQL statement
+
+7. **Proactive alerting** - OpenSearch monitors catch issues before they cause outages
 
 ---
 
-## Optional: OpenSearch Dashboards
+## OpenSearch Setup & Dashboards
 
-Want to add real-time visualization, search, and alerting capabilities? Continue with the **OpenSearch** guide:
+After completing the watsonx.data demo, set up OpenSearch for real-time visualization and alerting.
 
-**[OpenSearch for Energy Sector](opensearch.md)**
+**Complete guide:** **[OpenSearch for Energy Sector](opensearch.md)**
+
+The OpenSearch guide covers:
+- Installation with Docker Compose
+- SSH tunnel configuration
+- Syncing data from Cassandra
+- Building operational dashboards
+- Setting up intelligent alerts
+
+**For advanced visualizations** (controls, maps, dual-axis charts): **[Advanced Dashboard Guide](advanced_dashboard.md)**
 
 ---
 
@@ -873,4 +923,4 @@ CREATE TABLE IF NOT EXISTS energy_iot.assets (
 
 **Questions?** Review the Java source code in `energy-iot-demo/src/` for implementation details.
 
-**Ready to run?** Start with the Setup Guide above, then continue to the OpenSearch section for dashboards and alerting!
+**Ready to run?** Start with the Setup Guide above, then continue to **[OpenSearch for Energy Sector](opensearch.md)** for dashboards and alerting!
