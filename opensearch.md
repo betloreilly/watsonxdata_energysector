@@ -9,6 +9,8 @@
 - [A Day in the Life: The Challenge & How OpenSearch Solves It](#a-day-in-the-life-the-challenge--how-opensearch-solves-it)
 - [Why OpenSearch for Energy Operations?](#why-opensearch-for-energy-operations)
 - [Part 1: Setting Up OpenSearch](#part-1-setting-up-opensearch)
+  - [Option A: watsonx.data managed OpenSearch (recommended)](#option-a-watsonxdata-managed-opensearch-recommended)
+  - [Option B: Docker Compose](#option-b-docker-compose)
 - [Part 2: Loading Energy Sensor Data](#part-2-loading-energy-sensor-data)
 - [Part 3: Building Operational Dashboards](#part-3-building-operational-dashboards)
 - [Part 4: Search Queries](#part-4-search-queries)
@@ -173,7 +175,36 @@ Until native integration arrives, OpenSearch runs alongside your existing stack:
 
 ## Part 1: Setting Up OpenSearch
 
-### Deploy with Docker Compose
+You can use **IBM watsonx.data managed OpenSearch** (recommended) or run **OpenSearch with Docker** yourself.
+
+---
+
+### Option A: watsonx.data managed OpenSearch (recommended)
+
+Use **IBM watsonx.data managed OpenSearch**. No local install or Docker required.
+
+1. **Provision OpenSearch** via watsonx.data and note:
+   - **OpenSearch API URL** (endpoint and port, e.g. `https://<your-watsonx-opensearch-endpoint>:9200`)
+   - **OpenSearch Dashboards URL** (from your watsonx.data / OpenSearch console)
+   - **Username** and **password** (if authentication is enabled)
+
+2. **Set environment variables** so the sync and data scripts use your instance:
+
+```bash
+export OPENSEARCH_URL="https://<your-watsonx-opensearch-endpoint>:9200"
+export OPENSEARCH_USERNAME="your-username"
+export OPENSEARCH_PASSWORD="your-password"
+```
+
+Use the same variables when running `sync_to_opensearch.py`, `generate_sample_data.py`, and `generate_streaming_data.py`. For **Create the Index** and **Verify** steps in Part 2, use your API URL (and auth) instead of `http://localhost:9200` in `curl` commands.
+
+**Access:** Open your **watsonx.data OpenSearch Dashboards URL** in a browser (no SSH tunnel needed).
+
+---
+
+### Option B: Docker Compose
+
+If you prefer to run OpenSearch yourself (e.g. on EC2 or your laptop), use Docker Compose.
 
 1. **Create the OpenSearch directory:**
 
@@ -215,9 +246,7 @@ curl "http://localhost:9200/_cluster/health?pretty"
 
 > **Note**: The sample Docker Compose file disables security for development. For production deployments, enable the security plugin and configure TLS.
 
-### Configure SSH Tunnel (Remote Access)
-
-Add OpenSearch ports to your existing SSH tunnel. Open a **new terminal** on your Mac and run:
+**Configure SSH tunnel (when OpenSearch runs on EC2):** Add OpenSearch ports to your SSH tunnel. Open a **new terminal** on your Mac and run:
 
 ```bash
 ssh -i your-key.pem -N \
@@ -228,9 +257,11 @@ ssh -i your-key.pem -N \
 
 > **Note**: The `-N` flag keeps the tunnel open without starting a shell. Keep this terminal running while you access OpenSearch.
 
-**Access Points:**
+**Access points (Docker):**
 - **OpenSearch Dashboards**: http://localhost:5601
 - **OpenSearch API**: http://localhost:9200
+
+With Docker, you do **not** need to set `OPENSEARCH_URL`; the scripts default to `localhost:9200`.
 
 ---
 
@@ -251,6 +282,10 @@ ssh -i your-key.pem -N \
 
 ### Step 1: Create the Index
 
+**watsonx.data managed OpenSearch:** Replace the URL with your `OPENSEARCH_URL` and add `-u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD"` if you use auth.
+
+**Docker:** Use `http://localhost:9200` (with SSH tunnel if OpenSearch is on EC2).
+
 ```bash
 curl -X PUT "http://localhost:9200/energy-sensor-readings" \
   -H 'Content-Type: application/json' \
@@ -263,17 +298,26 @@ curl -X PUT "http://localhost:9200/energy-sensor-readings" \
 
 ### Step 2: Run the Sync Script
 
+**watsonx.data managed OpenSearch:** Set `OPENSEARCH_URL`, `OPENSEARCH_USERNAME`, and `OPENSEARCH_PASSWORD` in your environment (or in a `.env` file), then run the script. No code changes needed.
+
+**Docker:** Ensure OpenSearch is running (and SSH tunnel active if remote). Do **not** set `OPENSEARCH_URL`; the script defaults to `localhost:9200` with no auth.
+
 ```bash
+# Optional: set env vars for watsonx.data managed OpenSearch (recommended)
+# export OPENSEARCH_URL="https://<your-watsonx-opensearch-endpoint>:9200"
+# export OPENSEARCH_USERNAME="your-username"
+# export OPENSEARCH_PASSWORD="your-password"
+
 pip3 install cassandra-driver opensearch-py && python3 scripts/sync_to_opensearch.py
 ```
 
-> **Note**: Update `CASSANDRA_HOST` in `scripts/sync_to_opensearch.py` first. See [Appendix: Sync Script](#appendix-sync-script) for details.
+> **Note**: Set `CASSANDRA_HOST` (or `CASSANDRA_HOST` env var) for your Cassandra instance. See [Appendix: Sync Script](#appendix-sync-script) for details.
 
 ---
 
 ### Step 3: Generate Sample Data (Optional)
 
-If you don't have Cassandra data yet, generate sample data for dashboards:
+If you don't have Cassandra data yet, generate sample data for dashboards. Uses the same OpenSearch connection as the sync script (env vars for managed, or localhost for Docker).
 
 ```bash
 python3 scripts/generate_sample_data.py
@@ -283,6 +327,8 @@ python3 scripts/generate_sample_data.py
 
 ### Step 4: Verify Document Count
 
+Use your OpenSearch API URL (and auth if managed). Example for Docker:
+
 ```bash
 curl -s "http://localhost:9200/energy-sensor-readings/_count" | python3 -c "import sys,json; print(f'Documents: {json.load(sys.stdin)[\"count\"]:,}')"
 ```
@@ -291,7 +337,8 @@ curl -s "http://localhost:9200/energy-sensor-readings/_count" | python3 -c "impo
 
 ### Step 5: Open Dashboards
 
-Navigate to **http://localhost:5601** in your browser.
+**watsonx.data managed:** Open your watsonx.data OpenSearch Dashboards URL in your browser.  
+**Docker:** Navigate to **http://localhost:5601** (with SSH tunnel if OpenSearch is on EC2).
 
 Set time filter to **Last 7 days** to see the data.
 
@@ -911,75 +958,28 @@ This script sends new data every 5 seconds with some high temperature readings t
 ## Appendix: Sync Script
 
 <details>
-<summary><b>Full sync_to_opensearch.py code</b></summary>
+<summary><b>OpenSearch connection in sync_to_opensearch.py</b></summary>
 
-```python
-#!/usr/bin/env python3
-"""Sync energy sensor data from Cassandra to OpenSearch"""
+The script reads OpenSearch connection from **environment variables** (no hardcoded credentials):
 
-from cassandra.cluster import Cluster
-from opensearchpy import OpenSearch, helpers
+| Variable | Description | Example (watsonx.data) | Docker default |
+|----------|-------------|-------------------|----------------|
+| `OPENSEARCH_URL` | API endpoint | Your watsonx.data OpenSearch endpoint (e.g. `https://<endpoint>:9200`) | not set → use host/port |
+| `OPENSEARCH_USERNAME` | Username (optional) | `admin` | not set |
+| `OPENSEARCH_PASSWORD` | Password (optional) | your password | not set |
+| `OPENSEARCH_HOST` | Host when URL not set | — | `localhost` |
+| `OPENSEARCH_PORT` | Port when URL not set | — | `9200` |
 
-CASSANDRA_HOST = '<your-ec2-private-ip>'  # Update this
-OPENSEARCH_HOST = 'localhost'
+**watsonx.data managed OpenSearch:** Set `OPENSEARCH_URL` and, if your instance uses auth, `OPENSEARCH_USERNAME` and `OPENSEARCH_PASSWORD`. The script uses HTTPS when the URL scheme is `https`.
 
-def main():
-    # Connect to Cassandra
-    cluster = Cluster([CASSANDRA_HOST])
-    session = cluster.connect('energy_ks')
-    print(f"✓ Connected to Cassandra")
-    
-    # Connect to OpenSearch
-    client = OpenSearch(
-        hosts=[{'host': OPENSEARCH_HOST, 'port': 9200}],
-        http_compress=True, use_ssl=False, verify_certs=False
-    )
-    print(f"✓ Connected to OpenSearch")
-    
-    # Fetch data
-    rows = session.execute("SELECT * FROM sensor_readings_by_asset LIMIT 100000")
-    
-    # Transform and load
-    def generate_docs():
-        for row in rows:
-            yield {
-                '_index': 'energy-sensor-readings',
-                '_id': str(row.reading_id),
-                '_source': {
-                    'asset_id': str(row.asset_id),
-                    'asset_name': row.asset_name,
-                    'asset_type': row.asset_type,
-                    'facility_id': str(row.facility_id),
-                    'facility_name': row.facility_name,
-                    'region': row.region,
-                    'reading_id': str(row.reading_id),
-                    'reading_timestamp': row.reading_timestamp.isoformat() if row.reading_timestamp else None,
-                    'power_output': row.power_output,
-                    'voltage': row.voltage,
-                    'current': row.current,
-                    'temperature': row.temperature,
-                    'vibration_level': row.vibration_level,
-                    'frequency': row.frequency,
-                    'power_factor': row.power_factor,
-                    'ambient_temperature': row.ambient_temperature,
-                    'wind_speed': row.wind_speed,
-                    'solar_irradiance': row.solar_irradiance,
-                    'operational_status': row.operational_status,
-                    'alert_level': row.alert_level,
-                    'efficiency': row.efficiency,
-                    'capacity_factor': row.capacity_factor,
-                    'location': {'lat': row.latitude, 'lon': row.longitude} 
-                        if row.latitude and row.longitude else None
-                }
-            }
-    
-    success, failed = helpers.bulk(client, generate_docs(), chunk_size=1000)
-    print(f"✓ Indexed {success:,} documents, {failed} failed")
-    cluster.shutdown()
+**Docker:** Leave `OPENSEARCH_URL` unset; the script uses `localhost:9200` (or `OPENSEARCH_HOST` / `OPENSEARCH_PORT` if you set them).
 
-if __name__ == "__main__":
-    main()
-```
+</details>
+
+<details>
+<summary><b>Simplified sync flow (conceptual)</b></summary>
+
+The script loads config from the environment, connects to Cassandra and OpenSearch, fetches rows from Cassandra, transforms them into documents, and bulk-indexes into OpenSearch. Full source: `scripts/sync_to_opensearch.py`.
 
 </details>
 

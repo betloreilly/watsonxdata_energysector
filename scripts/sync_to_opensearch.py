@@ -8,8 +8,13 @@ This script demonstrates the ETL pattern for energy sector data:
 3. Load into OpenSearch (search & visualization layer)
 
 Usage:
-    # Update CASSANDRA_HOST below first
-    pip3 install cassandra-driver opensearch-py
+    # watsonx.data managed OpenSearch (recommended): set env vars, then run
+    export OPENSEARCH_URL="https://<your-watsonx-opensearch-endpoint>:9200"
+    export OPENSEARCH_USERNAME="your-username"
+    export OPENSEARCH_PASSWORD="your-password"
+    python3 scripts/sync_to_opensearch.py
+
+    # Docker OpenSearch: no env vars needed (defaults to localhost:9200)
     python3 scripts/sync_to_opensearch.py
 
 Requirements:
@@ -17,27 +22,31 @@ Requirements:
     - cassandra-driver
     - opensearch-py
     - Cassandra running with energy_ks keyspace
-    - OpenSearch running on localhost:9200 (via SSH tunnel)
+    - OpenSearch: watsonx.data managed (set OPENSEARCH_* env vars) or local (e.g. Docker on localhost:9200)
 """
 
 from cassandra.cluster import Cluster
 from opensearchpy import OpenSearch, helpers
 from datetime import datetime
+import os
 import sys
+from urllib.parse import urlparse
 
 # =============================================================================
-# CONFIGURATION - Update these for your environment
+# CONFIGURATION - Cassandra (edit or use env); OpenSearch from env vars
 # =============================================================================
 
-CASSANDRA_HOST = '<your-ec2-private-ip>'  # EC2 private IP (e.g., '10.0.1.123')
-CASSANDRA_KEYSPACE = 'energy_ks'
-CASSANDRA_TABLE = 'sensor_readings_by_asset'
+CASSANDRA_HOST = os.environ.get('CASSANDRA_HOST', '<your-ec2-private-ip>')
+CASSANDRA_KEYSPACE = os.environ.get('CASSANDRA_KEYSPACE', 'energy_ks')
+CASSANDRA_TABLE = os.environ.get('CASSANDRA_TABLE', 'sensor_readings_by_asset')
 
-OPENSEARCH_HOST = 'localhost'  # localhost via SSH tunnel
-OPENSEARCH_PORT = 9200
-OPENSEARCH_INDEX = 'energy-sensor-readings'
+# OpenSearch: use env vars for watsonx.data managed (default), or fallback to local Docker
+OPENSEARCH_URL = os.environ.get('OPENSEARCH_URL')  # watsonx.data managed OpenSearch endpoint
+OPENSEARCH_USERNAME = os.environ.get('OPENSEARCH_USERNAME')
+OPENSEARCH_PASSWORD = os.environ.get('OPENSEARCH_PASSWORD')
+OPENSEARCH_INDEX = os.environ.get('OPENSEARCH_INDEX', 'energy-sensor-readings')
 
-BATCH_SIZE = 100000  # Number of records to sync
+BATCH_SIZE = int(os.environ.get('OPENSEARCH_SYNC_BATCH_SIZE', '100000'))
 
 # =============================================================================
 # CONNECTION FUNCTIONS
@@ -56,24 +65,44 @@ def connect_cassandra():
         sys.exit(1)
 
 
+def _opensearch_config():
+    """Build OpenSearch client config from OPENSEARCH_URL or OPENSEARCH_HOST/PORT env vars."""
+    if OPENSEARCH_URL:
+        parsed = urlparse(OPENSEARCH_URL)
+        host = parsed.hostname or 'localhost'
+        port = parsed.port or (443 if parsed.scheme == 'https' else 9200)
+        use_ssl = parsed.scheme == 'https'
+    else:
+        host = os.environ.get('OPENSEARCH_HOST', 'localhost')
+        port = int(os.environ.get('OPENSEARCH_PORT', '9200'))
+        use_ssl = False
+    hosts = [{'host': host, 'port': port}]
+    kwargs = {
+        'hosts': hosts,
+        'http_compress': True,
+        'use_ssl': use_ssl,
+        'verify_certs': use_ssl,
+        'timeout': 60,
+    }
+    if OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD:
+        kwargs['http_auth'] = (OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD)
+    return kwargs
+
+
 def connect_opensearch():
-    """Connect to OpenSearch cluster"""
+    """Connect to OpenSearch cluster (watsonx.data managed or Docker)."""
     try:
-        client = OpenSearch(
-            hosts=[{'host': OPENSEARCH_HOST, 'port': OPENSEARCH_PORT}],
-            http_compress=True,
-            use_ssl=False,
-            verify_certs=False,
-            timeout=60
-        )
-        # Test connection
+        client = OpenSearch(**_opensearch_config())
         info = client.info()
         print(f"✓ Connected to OpenSearch {info['version']['number']}")
         return client
     except Exception as e:
         print(f"✗ Failed to connect to OpenSearch: {e}")
-        print(f"  Make sure OpenSearch is running and SSH tunnel is active")
-        print(f"  SSH tunnel: ssh -L 9200:localhost:9200 ec2-user@<your-ec2-ip>")
+        if OPENSEARCH_URL:
+            print(f"  Check OPENSEARCH_URL, OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD")
+        else:
+            print(f"  For Docker: ensure OpenSearch is running and SSH tunnel is active")
+            print(f"  SSH tunnel: ssh -L 9200:localhost:9200 ec2-user@<your-ec2-ip>")
         sys.exit(1)
 
 
@@ -213,7 +242,8 @@ def main():
     count = opensearch_client.count(index=OPENSEARCH_INDEX)['count']
     print(f"  Total documents in index: {count:,}")
     
-    print("\n✓ Done! Open http://localhost:5601 to view dashboards")
+    print("\n✓ Done! Open OpenSearch Dashboards to view data")
+    print("  (Managed: use your Dashboards URL; Docker: http://localhost:5601)")
     print("  Set time filter to 'Last 7 days' to see the data\n")
     
     # Cleanup

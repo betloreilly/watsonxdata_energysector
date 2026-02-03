@@ -6,24 +6,32 @@ This script creates realistic energy sector data across multiple days,
 including various asset types and sensor readings.
 
 Usage:
-    pip3 install opensearch-py
+    # watsonx.data managed OpenSearch (recommended): set env vars, then run
+    export OPENSEARCH_URL="https://<your-watsonx-opensearch-endpoint>:9200"
+    export OPENSEARCH_USERNAME="your-username"
+    export OPENSEARCH_PASSWORD="your-password"
     python3 scripts/generate_sample_data.py
+
+    # Docker OpenSearch: python3 scripts/generate_sample_data.py
 
 Requirements:
     - Python 3.8+
     - opensearch-py
-    - OpenSearch running on localhost:9200
+    - OpenSearch: watsonx.data managed (set OPENSEARCH_* env vars) or local (e.g. Docker on localhost:9200)
 """
 
 from opensearchpy import OpenSearch, helpers
 from datetime import datetime, timedelta
+import os
 import random
 import uuid
+from urllib.parse import urlparse
 
-# Configuration
-OPENSEARCH_HOST = 'localhost'
-OPENSEARCH_PORT = 9200
-INDEX_NAME = 'energy-sensor-readings'
+# Configuration - from environment (managed default) or localhost (Docker)
+OPENSEARCH_URL = os.environ.get('OPENSEARCH_URL')
+OPENSEARCH_USERNAME = os.environ.get('OPENSEARCH_USERNAME')
+OPENSEARCH_PASSWORD = os.environ.get('OPENSEARCH_PASSWORD')
+INDEX_NAME = os.environ.get('OPENSEARCH_INDEX', 'energy-sensor-readings')
 
 # Data generation settings
 DAYS_OF_DATA = 7  # Generate 7 days of historical data
@@ -74,14 +82,31 @@ ALERT_LEVELS = ['normal', 'normal', 'normal', 'normal', 'warning', 'critical']  
 OPERATIONAL_STATUS = ['online', 'online', 'online', 'online', 'maintenance', 'offline']
 
 
+def _opensearch_config():
+    """Build OpenSearch client config from OPENSEARCH_URL or OPENSEARCH_HOST/PORT."""
+    if OPENSEARCH_URL:
+        parsed = urlparse(OPENSEARCH_URL)
+        host = parsed.hostname or 'localhost'
+        port = parsed.port or (443 if parsed.scheme == 'https' else 9200)
+        use_ssl = parsed.scheme == 'https'
+    else:
+        host = os.environ.get('OPENSEARCH_HOST', 'localhost')
+        port = int(os.environ.get('OPENSEARCH_PORT', '9200'))
+        use_ssl = False
+    kwargs = {
+        'hosts': [{'host': host, 'port': port}],
+        'http_compress': True,
+        'use_ssl': use_ssl,
+        'verify_certs': use_ssl,
+    }
+    if OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD:
+        kwargs['http_auth'] = (OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD)
+    return kwargs
+
+
 def connect_opensearch():
-    """Connect to OpenSearch cluster"""
-    client = OpenSearch(
-        hosts=[{'host': OPENSEARCH_HOST, 'port': OPENSEARCH_PORT}],
-        http_compress=True,
-        use_ssl=False,
-        verify_certs=False
-    )
+    """Connect to OpenSearch cluster (watsonx.data managed or Docker)."""
+    client = OpenSearch(**_opensearch_config())
     info = client.info()
     print(f"✓ Connected to OpenSearch {info['version']['number']}")
     return client
@@ -287,7 +312,7 @@ def main():
     print(f"    Total in index: {count:,}")
     print("=" * 60)
     print("\nNext steps:")
-    print("  1. Open OpenSearch Dashboards: http://localhost:5601")
+    print("  1. Open OpenSearch Dashboards (managed: your URL; Docker: http://localhost:5601)")
     print("  2. Set time filter to 'Last 7 days'")
     print("  3. Refresh your visualizations")
     print("=" * 60 + "\n")

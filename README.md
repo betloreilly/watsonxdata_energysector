@@ -5,10 +5,11 @@
 A complete data platform for energy infrastructure IoT data. This demo shows how to handle sensor data from wind turbines, solar panels, and substations using:
 
 - **Cassandra (HCD)** - High-velocity operational data ingestion
-- **Apache Iceberg** - Cost-effective historical analytics storage  
+- **Apache Iceberg** - Cost-effective historical analytics storage
 - **OpenSearch** - Real-time dashboards, search, and alerting
-- **IBM watsonx.data** - Federated queries across all systems
 - **Apache Spark** - ETL pipeline for data movement
+
+**IBM watsonx.data** enables federated queries across these systems.
 
 **Based on**: This version builds upon [wxd-spark-hcd](https://github.com/michelderu/wxd-spark-hcd) and [cass_spark_iceberg](https://github.ibm.com/pravin-bhat/cass_spark_iceberg/tree/main), updated for EC2 deployment and customized with Energy-sector examples.
 
@@ -96,11 +97,11 @@ Each component is optimized for a specific workload:
 - **Type**: m5.2xlarge (8 vCPU, 32 GB RAM)
 - **OS**: RHEL 8 or RHEL 9
 - **Storage**: 100 GB minimum
-- **Ports**: 22 (SSH), 9443 (watsonx.data), 9200 (OpenSearch), 5601 (OpenSearch Dashboards)
+- **Ports**: 22 (SSH), 9443 (watsonx.data). For OpenSearch: use your watsonx.data OpenSearch endpoint URLs, or 9200/5601 if running Docker on EC2.
 
 ### Software Required
 - Docker/Podman - Container runtime
-- Docker Compose - For OpenSearch cluster
+- OpenSearch - **IBM watsonx.data managed OpenSearch (recommended)** or Docker Compose for local/EC2
 - Kubernetes - For watsonx.data
 - Java 11 or 17 - For DataStax HCD
 - Maven - For building Java applications
@@ -807,9 +808,21 @@ After completing the watsonx.data demo, set up OpenSearch for real-time visualiz
 
 **Complete guide:** **[OpenSearch for Energy Sector](opensearch.md)**
 
+**Recommended:** Use **IBM watsonx.data managed OpenSearch**. Configure connection via environment variables—no local install required:
+
+```bash
+export OPENSEARCH_URL="https://<your-watsonx-opensearch-endpoint>:9200"
+export OPENSEARCH_USERNAME="your-username"
+export OPENSEARCH_PASSWORD="your-password"
+```
+
+Or copy `env.example` to `.env` and set the same variables there (scripts do not load `.env` automatically; use `export` or your shell’s env file).
+
+**Alternative:** Run OpenSearch with **Docker Compose** on EC2 or your laptop (see the guide).
+
 The OpenSearch guide covers:
-- Installation with Docker Compose
-- SSH tunnel configuration
+- **Option A (default):** Connecting to watsonx.data managed OpenSearch (env vars)
+- **Option B:** Installing and running OpenSearch with Docker Compose
 - Syncing data from Cassandra
 - Building operational dashboards
 - Setting up intelligent alerts

@@ -8,25 +8,28 @@ This script sends new sensor readings every few seconds to trigger all 3 alerts:
   3. High Vibration (>= 7)
 
 Usage:
-    pip3 install opensearch-py
-    python3 scripts/generate_streaming_data.py
+    # watsonx.data managed OpenSearch: set OPENSEARCH_URL, OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD
+    # Docker OpenSearch: python3 scripts/generate_streaming_data.py (no env vars needed)
 
 Requirements:
     - Python 3.8+
     - opensearch-py
-    - OpenSearch running on localhost:9200
+    - OpenSearch: watsonx.data managed (set OPENSEARCH_* env vars) or local (e.g. Docker on localhost:9200)
 """
 
 from opensearchpy import OpenSearch
 from datetime import datetime
+import os
 import random
 import uuid
 import time
+from urllib.parse import urlparse
 
-# Configuration
-OPENSEARCH_HOST = 'localhost'
-OPENSEARCH_PORT = 9200
-INDEX_NAME = 'energy-sensor-readings'
+# Configuration - from environment (managed) or localhost (Docker)
+OPENSEARCH_URL = os.environ.get('OPENSEARCH_URL')
+OPENSEARCH_USERNAME = os.environ.get('OPENSEARCH_USERNAME')
+OPENSEARCH_PASSWORD = os.environ.get('OPENSEARCH_PASSWORD')
+INDEX_NAME = os.environ.get('OPENSEARCH_INDEX', 'energy-sensor-readings')
 
 # How often to send data (seconds)
 INTERVAL = 5
@@ -38,14 +41,31 @@ FACILITIES = [
 ]
 
 
+def _opensearch_config():
+    """Build OpenSearch client config from OPENSEARCH_URL or OPENSEARCH_HOST/PORT."""
+    if OPENSEARCH_URL:
+        parsed = urlparse(OPENSEARCH_URL)
+        host = parsed.hostname or 'localhost'
+        port = parsed.port or (443 if parsed.scheme == 'https' else 9200)
+        use_ssl = parsed.scheme == 'https'
+    else:
+        host = os.environ.get('OPENSEARCH_HOST', 'localhost')
+        port = int(os.environ.get('OPENSEARCH_PORT', '9200'))
+        use_ssl = False
+    kwargs = {
+        'hosts': [{'host': host, 'port': port}],
+        'http_compress': True,
+        'use_ssl': use_ssl,
+        'verify_certs': use_ssl,
+    }
+    if OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD:
+        kwargs['http_auth'] = (OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD)
+    return kwargs
+
+
 def connect_opensearch():
-    """Connect to OpenSearch"""
-    client = OpenSearch(
-        hosts=[{'host': OPENSEARCH_HOST, 'port': OPENSEARCH_PORT}],
-        http_compress=True,
-        use_ssl=False,
-        verify_certs=False
-    )
+    """Connect to OpenSearch (watsonx.data managed or Docker)."""
+    client = OpenSearch(**_opensearch_config())
     info = client.info()
     print(f"✓ Connected to OpenSearch {info['version']['number']}")
     return client

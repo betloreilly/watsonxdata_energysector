@@ -14,9 +14,11 @@ This guide walks you through building advanced dashboards for energy operations.
 
 ## Prerequisites
 
-1. **OpenSearch running** with the `energy-sensor-readings` index
+1. **OpenSearch** running with the `energy-sensor-readings` index  
+   - **Managed (recommended):** Use **IBM watsonx.data managed OpenSearch**; set `OPENSEARCH_URL`, `OPENSEARCH_USERNAME`, and `OPENSEARCH_PASSWORD` in your environment.  
+   - **Docker:** Run OpenSearch via Docker Compose (see [OpenSearch for Energy Sector](opensearch.md)).
 2. **Index pattern created** for `energy-sensor-readings` with `reading_timestamp` as time field
-3. **Sample data loaded** (run `python3 scripts/generate_sample_data.py`)
+3. **Sample data loaded** (run `python3 scripts/generate_sample_data.py`; same env vars apply)
 
 ---
 
