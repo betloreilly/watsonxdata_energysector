@@ -116,19 +116,7 @@ The ROI? One prevented unplanned outage can save hundreds of thousands of dollar
 
 ### Today's Architecture
 
-#### Can OpenSearch be Added to watsonx.data?
-
-Current State (December 2025) : **Direct integration is not yet available.** watsonx.data does not currently have a native OpenSearch connector.
-
-#### The Good News :  IBM joined the **OpenSearch Software Foundation as a Premier Member** . 
-
-This signals commitment to future integration:
-
-- Native OpenSearch connector in watsonx.data
-- Federated queries spanning Iceberg, Cassandra, Other databases and OpenSearch
-- Unified data governance across both platforms
-
-Until native integration arrives, OpenSearch runs alongside your existing stack:
+This demo uses **IBM watsonx.data** as the platform: watsonx.data supports OpenSearch, and together with the other solutions like Cassandra and Iceberg it gives you federated analytics, search, and dashboards in one place.
 
 ```
                     ┌─────────────────────────────────┐
